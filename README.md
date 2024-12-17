@@ -141,3 +141,10 @@ We propose a new annotation format 'ODGT' which is much easier to understand, an
 ## Acknowledgement
 We sincerely thank all previous works, especially [DETR](https://github.com/facebookresearch/detr), [PPDM](https://github.com/YueLiao/PPDM), [iCAN](https://github.com/vt-vl-lab/iCAN), for some of the codes are built upon them.
 
+## Laurins Notes
+- the results for hico-dataset could be confirmed
+- start learning rates are: 0.0001 (transformer), 1e-05 (backbone)
+- current are: 1e-05, 1e-06
+- lr-scheduler: {'step_size': 110, 'gamma': 0.1, 'base_lrs': [0.0001, 1e-05], 'last_epoch': 150, '_step_count': 151, '_get_lr_called_within_step': False, '_last_lr': [1e-05, 1.0000000000000002e-06]}
+
+-> ich würde die learning rate glaube etwas niedriger noch setzen -> und in der ablation study nochmal etwas herum probieren

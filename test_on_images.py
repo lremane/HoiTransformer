@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------
 
 import argparse
+import glob
 import random
 import os
 from tqdm import tqdm
@@ -32,7 +33,7 @@ def get_args_parser():
     parser.add_argument('--clip_max_norm', default=0.1, type=float, help='gradient clipping max norm')
 
     # Backbone.
-    parser.add_argument('--backbone', choices=['resnet50', 'resnet101'], required=True,
+    parser.add_argument('--backbone', choices=['resnet50', 'resnet101', 'swin'], required=True,
                         help="Name of the convolutional backbone to use")
     parser.add_argument('--position_embedding', default='sine', type=str, choices=('sine', 'learned'),
                         help="Type of positional embedding to use on top of the image features")
@@ -147,11 +148,23 @@ def triplet_nms(hoi_list):
 def load_model(model_path, args):
     checkpoint = torch.load(model_path, map_location='cpu')
     print('epoch:', checkpoint['epoch'])
+    print('lr_scheduler:', checkpoint['lr_scheduler'])
     device = torch.device(args.device)
-    model, criterion = build_model(args)
+    model, _ = build_model(args)
     model.load_state_dict(checkpoint['model'])
     model.to(device)
+
+    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    trainable_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    print('number of params:', n_parameters)
+    print(f"number of trainable parameters: {trainable_params}")
+
     model.eval()
+
+    # for name, param in model.named_parameters():
+    #     print(f"Layer: {name} | Size: {param.size()} | Requires Grad: {param.requires_grad}")
+
+    # model.summary()
     return model, device
 
 
@@ -289,20 +302,20 @@ def viz_hoi_result(img, hoi_list):
         # action
         i_cls, i_name = hoi['i_cls'], hoi['i_name']
         cv2.putText(img_result, '%s:%.2f' % (i_name, i_cls),
-                    (10, 50 * idx_box + 50), cv2.FONT_HERSHEY_COMPLEX, 1, color, 2)
+                    (10, 50 * idx_box + 50), cv2.FONT_HERSHEY_COMPLEX, 0.5, color, 1)
         # human
         x1, y1, x2, y2 = hoi['h_box']
         h_cls, h_name = hoi['h_cls'], hoi['h_name']
         cv2.rectangle(img_result, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(img_result, '%s:%.2f' % (h_name, h_cls), (x1, y2), cv2.FONT_HERSHEY_COMPLEX, 1, color, 2)
+        cv2.putText(img_result, '%s:%.2f' % (h_name, h_cls), (x1, y2), cv2.FONT_HERSHEY_COMPLEX, 0.5, color, 1)
         # object
         x1, y1, x2, y2 = hoi['o_box']
         o_cls, o_name = hoi['o_cls'], hoi['o_name']
         cv2.rectangle(img_result, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(img_result, '%s:%.2f' % (o_name, o_cls), (x1, y2), cv2.FONT_HERSHEY_COMPLEX, 1, color, 2)
-    if img_result.shape[0] > 480:
-        ratio = img_result.shape[0] / 480
-        img_result = cv2.resize(img_result, (int(img_result.shape[1] / ratio), int(img_result.shape[0] / ratio)))
+        cv2.putText(img_result, '%s:%.2f' % (o_name, o_cls), (x1, y2), cv2.FONT_HERSHEY_COMPLEX, 0.5, color, 1)
+    # if img_result.shape[0] > 480:
+    #     ratio = img_result.shape[0] / 480
+    #     img_result = cv2.resize(img_result, (int(img_result.shape[1] / ratio), int(img_result.shape[0] / ratio)))
     return img_result
 
 
@@ -320,8 +333,10 @@ def run_on_images(args, img_path_list):
         img_rescale = resize_ensure_shortest_edge(img=img, size=672, max_size=1333)
         img_tensor = prepare_cv2_image4nn(img=img_rescale)
         hoi_list = predict_on_one_image(
-            args, model, device, img_tensor, img_size, hoi_th=0.6, human_th=0.6, object_th=0.6, top_k=25,
+            args, model, device, img_tensor, img_size, hoi_th=0.6, human_th=0.4, object_th=0.4, top_k=5,
+            # args, model, device, img_tensor, img_size, hoi_th=0.1, human_th=0.1, object_th=0.1, top_k=50,
         )
+        print(f"hoi_list: {hoi_list}")
         img_name = 'img_%s_%06d.jpg' % (os.path.basename(img_path), idx_img)
         img_result = viz_hoi_result(img=img, hoi_list=hoi_list)
         cv2.imwrite(os.path.join(log_dir, img_name), img_result)
@@ -338,9 +353,9 @@ def main():
 
     if args.img_sheet is None:
         img_path_list = [
-            './data/hico/images/test2015/HICO_test2015_00000001.jpg',
-            './data/hoia/images/test/test_000000.png',
+            './data/hico/images/train2015/train2015_hanwha_QNF-8010_wallmount_0364.png',
         ]
+        #img_path_list = glob.glob("data/0initModel/*.jpg")
     else:
         img_path_list = [l.strip() for l in open(args.img_sheet, 'r').readlines()]
 

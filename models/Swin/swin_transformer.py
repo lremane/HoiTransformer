@@ -11,6 +11,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.checkpoint as checkpoint
 import numpy as np
+from timm.models import load_checkpoint
 from timm.models.layers import DropPath, to_2tuple, trunc_normal_
 from typing import Dict, List
 from util.misc import NestedTensor, is_main_process

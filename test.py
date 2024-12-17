@@ -22,6 +22,7 @@ from datasets.vcoco import hoi_interaction_names as hoi_interaction_names_vcoco
 from datasets.vcoco import coco_instance_ID_to_name as coco_instance_ID_to_name_vcoco
 from models import build_model
 import util.misc as utils
+from tools.eval import eval_hico
 
 
 def get_args_parser():
@@ -361,7 +362,7 @@ def draw_on_image(args, image_id, hoi_list, image_path):
     cv2.imwrite(image_path, img_result)
 
 
-def eval_once(args, model_result_path, hoi_th=0.9, human_th=0.5, object_th=0.8, max_to_viz=10, save_image=False):
+def eval_once(args, model_path, model_result_path, hoi_th=0.9, human_th=0.5, object_th=0.8, max_to_viz=10, save_image=False):
     assert args.dataset_file in ['hico', 'vcoco', 'hoia'], args.dataset_file
 
     hoi_result_list = parse_model_result(
@@ -383,7 +384,8 @@ def eval_once(args, model_result_path, hoi_th=0.9, human_th=0.5, object_th=0.8, 
 
     os.system('echo %s >> final_report.txt' % result_file)
     if args.dataset_file == 'hico':
-        os.system('python3 tools/eval/eval_hico.py --output_file=%s >> final_report.txt' % result_file)
+        # eval_hico.main()
+        os.system(f'python3 tools/eval/eval_hico.py --output_file={result_file} --epoch={args.epoch} --output_dir={os.path.dirname(model_path)} >> final_report.txt')
     elif args.dataset_file == 'vcoco':
         os.system('python3 tools/eval/eval_vcoco.py --output_file=%s >> final_report.txt' % result_file)
     else:
@@ -406,6 +408,7 @@ def run_and_eval(args, model_path, test_scale, max_to_viz=10, save_image=False):
             for hoi_th in [0.0]:
                 eval_once(
                     args=args,
+                    model_path=model_path,
                     model_result_path=model_output_file,
                     hoi_th=hoi_th,
                     human_th=human_th,
@@ -421,6 +424,8 @@ def main():
     python3 test.py --dataset_file=hico --backbone=resnet50 --batch_size=1 --log_dir=./ --model_path=your_model_path
     """
     parser = get_args_parser()
+    parser.add_argument('--epoch', type=int)
+
     args = parser.parse_args()
     print(args)
 
@@ -438,6 +443,8 @@ def main():
                 max_to_viz=args.max_to_viz if args.save_image else 200*100,
                 save_image=args.save_image,
             )
+
+    torch.cuda.empty_cache()
     print('done')
 
 

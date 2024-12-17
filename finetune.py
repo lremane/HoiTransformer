@@ -38,6 +38,8 @@ def create_log_dir(checkpoint='checkpoint', log_path='/data/LOG/train_log'):
 
 def get_args_parser():
     parser = argparse.ArgumentParser('Set transformer detector', add_help=False)
+    parser.add_argument('--dont_use_checkpoint_state', action='store_false')
+
     parser.add_argument('--lr', default=1e-4, type=float)
     parser.add_argument('--lr_backbone', default=1e-5, type=float)
     parser.add_argument('--batch_size', default=2, type=int)
@@ -100,7 +102,7 @@ def get_args_parser():
     parser.add_argument('--device', default='cuda',
                         help='device to use for training')
     parser.add_argument('--seed', default=42, type=int)
-    parser.add_argument('--resume', action='store_true', help='resume from checkpoint')
+    parser.add_argument('--resume', default='', help='resume from checkpoint')
     parser.add_argument('--start_epoch', default=0, type=int, metavar='N',
                         help='start epoch')
     parser.add_argument('--num_workers', default=0, type=int)
@@ -182,7 +184,7 @@ def main(args):
     if args.resume:
         checkpoint = torch.load(args.resume, map_location='cpu')
         model_without_ddp.load_state_dict(checkpoint['model'])
-        if 'optimizer' in checkpoint and 'lr_scheduler' in checkpoint and 'epoch' in checkpoint:
+        if args.dont_use_checkpoint_state and 'optimizer' in checkpoint and 'lr_scheduler' in checkpoint and 'epoch' in checkpoint:
             optimizer.load_state_dict(checkpoint['optimizer'])
             lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             args.start_epoch = checkpoint['epoch'] + 1
@@ -219,6 +221,23 @@ def main(args):
         if args.output_dir and utils.is_main_process():
             with (output_dir / "log.txt").open("a") as f:
                 f.write(json.dumps(log_stats) + "\n")
+
+        import subprocess
+
+        torch.cuda.empty_cache()
+
+        subprocess.run(
+            [
+                "python3", "test.py",
+                "--backbone=resnet50",
+                "--batch_size=1",
+                "--dataset_file=hico",
+                "--log_dir=./",
+                f"--model_path={checkpoint_paths[0]}",
+                f"--epoch={epoch}"
+            ],
+            check=True
+        )
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

@@ -481,25 +481,25 @@ class Normalize(object):
         image = torchvision.transforms.functional.normalize(image, mean=self.mean, std=self.std)
         if target is None:
             return image, None
-        target = target.copy()
-        if image_set in ['test']:
-            return image, target
-        h, w = image.shape[-2:]
-        if "human_boxes" in target:
-            boxes = target["human_boxes"]
-            boxes = box_xyxy_to_cxcywh(boxes)
-            boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
-            target["human_boxes"] = boxes
-        if "object_boxes" in target:
-            boxes = target["object_boxes"]
-            boxes = box_xyxy_to_cxcywh(boxes)
-            boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
-            target["object_boxes"] = boxes
-        if "action_boxes" in target:
-            boxes = target["action_boxes"]
-            boxes = box_xyxy_to_cxcywh(boxes)
-            boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
-            target["action_boxes"] = boxes
+        # target = target.copy()
+        # if image_set in ['test']:
+        #     return image, target
+        # h, w = image.shape[-2:]
+        # if "human_boxes" in target:
+        #     boxes = target["human_boxes"]
+        #     boxes = box_xyxy_to_cxcywh(boxes)
+        #     boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
+        #     target["human_boxes"] = boxes
+        # if "object_boxes" in target:
+        #     boxes = target["object_boxes"]
+        #     boxes = box_xyxy_to_cxcywh(boxes)
+        #     boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
+        #     target["object_boxes"] = boxes
+        # if "action_boxes" in target:
+        #     boxes = target["action_boxes"]
+        #     boxes = box_xyxy_to_cxcywh(boxes)
+        #     boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
+        #     target["action_boxes"] = boxes
         return image, target
 
 
@@ -573,7 +573,7 @@ class HoiDetection(VisionDataset):
         else:  # For single image visualization.
             raise NotImplementedError()
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-        img = Image.fromarray(img[:, :, ::-1]).convert('RGB')
+        img = Image.fromarray(img[:, :, ::-1]).convert('RGB') # convert to rgb format
         if self.transforms is not None:
             img, target = self.transforms(img, target, self.image_set)
         return img, target

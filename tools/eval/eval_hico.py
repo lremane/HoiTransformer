@@ -3,9 +3,15 @@
     Bohan Wang 2020-10-30
 """
 
+import os
+import argparse
 import json
+import shutil
+
 import numpy as np
 import logging
+
+import pandas as pd
 from tqdm import tqdm
 
 
@@ -62,8 +68,8 @@ class hico():
                 if self.verb_name_dict.index(triplet) not in self.sum_gt.keys():
                     self.sum_gt[self.verb_name_dict.index(triplet)] = 0
                 self.sum_gt[self.verb_name_dict.index(triplet)] += 1
-        assert len(self.no_inds) == 80, "number of no_interaction labels should be 80"
-        assert len(self.in_inds) == 520, "number of interaction labels should be 520"
+        # assert len(self.no_inds) == 80, "number of no_interaction labels should be 80"
+        # assert len(self.in_inds) == 520, "number of interaction labels should be 520"
 
         # traverse trainval dataset to tongji number of instances
         for train_i in self.train_annotations:
@@ -79,7 +85,8 @@ class hico():
                 if self.verb_name_dict.index(triplet) not in self.train_sum.keys():
                     self.train_sum[self.verb_name_dict.index(triplet)] = 0
                 self.train_sum[self.verb_name_dict.index(triplet)] += 1
-        for i in range(len(self.verb_name_dict)):
+#        for i in range(len(self.verb_name_dict)):
+        for i in range(600):
             self.fp[i] = []
             self.tp[i] = []
             self.score[i] = []
@@ -93,7 +100,7 @@ class hico():
 
         self.num_class = len(self.verb_name_dict)
 
-    def evalution(self, predict_annot, save_mAP=None):
+    def evalution(self, predict_annot, args, save_mAP=None):
         for pred_i in predict_annot:
             if pred_i['file_name'] not in self.file_name:
                 continue
@@ -113,18 +120,24 @@ class hico():
                 for i, pred_hoi_i in enumerate(pred_i['hoi_prediction']):
                     triplet = [pred_bbox[pred_hoi_i['subject_id']]['category_id'],
                                pred_bbox[pred_hoi_i['object_id']]['category_id'], pred_hoi_i['category_id']]
+                    # todo: das knallt hier weg, wenn etwas vorhergesagt wird, was es nicht gibt
+                    if triplet not in self.verb_name_dict:
+                        print('error: the following prediction is a not allowed hoi: ', triplet, pred_i['file_name'])
+                        continue
                     verb_id = self.verb_name_dict.index(triplet)
                     self.tp[verb_id].append(0)
                     self.fp[verb_id].append(1)
                     self.score[verb_id].append(pred_hoi_i['score'])
-        map = self.compute_map(save_mAP)
+        map = self.compute_map(args, save_mAP)
         return map
 
-    def compute_map(self, save_mAP=None):
-        logging.debug(f"total category = {self.num_class}")
+    def compute_map(self, args, save_mAP=None):
+        print(f"total category = {self.num_class}")
         ap = np.zeros(self.num_class)
         max_recall = np.zeros(self.num_class)
         name2ap = {}
+
+        class_ap_recall_log = []  # Initialize a list to store class-wise information
         for i in range(len(self.verb_name_dict)):
             name = self.verb_name_dict_name[i]
             sum_gt = self.sum_gt[i]
@@ -146,7 +159,15 @@ class hico():
             prec = tp / (fp + tp)
             ap[i] = self.voc_ap(rec, prec)
             max_recall[i] = np.max(rec)
-            logging.debug(f"class {self.verb_name_dict_name[i]} -- ap: {ap[i]} max recall:{max_recall[i]}")
+
+            # class_info = f"class {self.verb_name_dict_name[i]} -- ap: {ap[i]} max recall: {max_recall[i]}"
+            class_info = {
+                "class": self.verb_name_dict_name[i],
+                "ap": ap[i],
+                "max_recall": max_recall[i]
+            }
+            print(class_info)
+            class_ap_recall_log.append(class_info)
             name2ap[name] = ap[i]
 
         mAP = np.mean(ap[:])
@@ -156,10 +177,35 @@ class hico():
         mAP_noninter = np.mean(ap[self.no_inds])
 
         m_rec = np.mean(max_recall[:])
-        print('--------------------')
-        print(
-            f'mAP Full: {mAP}\nmAP rare: {mAP_rare}  mAP nonrare: {mAP_nonrare}\nmAP inter: {mAP_inter} mAP noninter: {mAP_noninter}\nmax recall: {m_rec}')
-        print('--------------------')
+
+        eval_path = os.path.join(args.output_dir, 'eval.txt')
+
+        if os.path.exists(eval_path):
+            with open(eval_path, 'r', encoding='utf-8') as file:
+                json_data = [json.loads(line) for line in file]
+
+            df = pd.DataFrame(json_data)
+
+            model_path = os.path.join(args.output_dir, 'checkpoint.pth')
+            updated_model_path = os.path.join(args.output_dir, f'checkpoint_best.pth')
+            print(df['mAP Full'].max())
+            if df['mAP Full'].max() < mAP:
+                shutil.move(model_path, updated_model_path)
+
+        eval_log = {
+            "epoch": args.epoch,
+            "mAP Full": mAP,
+            "mAP Rare": mAP_rare,
+            "mAP Non-Rare": mAP_nonrare,
+            "mAP Inter": mAP_inter,
+            "mAP Non-Inter": mAP_noninter,
+            "max recall": m_rec,
+            "classes": class_ap_recall_log
+        }
+
+        print(eval_path)
+        with open(eval_path, 'a') as file:
+            file.write(json.dumps(eval_log) + "\n")
 
         if save_mAP is not None:
             json.dump(name2ap, open(save_mAP, "w"))
@@ -340,7 +386,7 @@ hico_name2id = {name: i + 1 for i, name in enumerate(hico_action_name)}
 hico_action_inverse_ids = {i: i - 1 for i in range(1, 118)}
 
 # [1, 90]
-coco_classes_originID = {
+hico_classes_originID = {
     "person": 1,
     "bicycle": 2,
     "car": 3,
@@ -439,7 +485,7 @@ def get_hoi_output(Image_dets, corre_mat=None):
             object_bbox = det['o_box']
             object_score = det['o_cls']
             object_name = det["o_name"]
-            object_cat = coco_classes_originID[object_name]
+            object_cat = hico_classes_originID[object_name]
 
             inter_name = det["i_name"]
             inter_cat = hico_name2id[inter_name]
@@ -463,12 +509,14 @@ def get_hoi_output(Image_dets, corre_mat=None):
     return output_hoi
 
 
-if __name__ == "__main__":
-    import os
-    import argparse
+def main():
     parser = argparse.ArgumentParser()
+    # parser.add_argument("--output_file", type=str, default='../../log/result_s672_e048_hico_resnet50.json')
+    # parser.add_argument("--eval_path", default="../../data/hico/eval")
     parser.add_argument("--output_file", type=str)
     parser.add_argument("--eval_path", default="./data/hico/eval")
+    parser.add_argument('--epoch', type=int)
+    parser.add_argument('--output_dir', type=str)
 
     args = parser.parse_args()
 
@@ -485,4 +533,12 @@ if __name__ == "__main__":
 
     # 2. evaluation
     hoi_eval = hico(os.path.join(args.eval_path, 'test_hico.json'))
-    map = hoi_eval.evalution(output_hoi, save_mAP=None)
+    map = hoi_eval.evalution(output_hoi, args, save_mAP=None)
+
+    return map
+
+def evaluate():
+    pass
+
+if __name__ == "__main__":
+    main()
