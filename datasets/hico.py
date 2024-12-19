@@ -481,25 +481,25 @@ class Normalize(object):
         image = torchvision.transforms.functional.normalize(image, mean=self.mean, std=self.std)
         if target is None:
             return image, None
-        # target = target.copy()
-        # if image_set in ['test']:
-        #     return image, target
-        # h, w = image.shape[-2:]
-        # if "human_boxes" in target:
-        #     boxes = target["human_boxes"]
-        #     boxes = box_xyxy_to_cxcywh(boxes)
-        #     boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
-        #     target["human_boxes"] = boxes
-        # if "object_boxes" in target:
-        #     boxes = target["object_boxes"]
-        #     boxes = box_xyxy_to_cxcywh(boxes)
-        #     boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
-        #     target["object_boxes"] = boxes
-        # if "action_boxes" in target:
-        #     boxes = target["action_boxes"]
-        #     boxes = box_xyxy_to_cxcywh(boxes)
-        #     boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
-        #     target["action_boxes"] = boxes
+        target = target.copy()
+        if image_set in ['test']:
+            return image, target
+        h, w = image.shape[-2:]
+        if "human_boxes" in target:
+            boxes = target["human_boxes"]
+            boxes = box_xyxy_to_cxcywh(boxes)
+            boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
+            target["human_boxes"] = boxes
+        if "object_boxes" in target:
+            boxes = target["object_boxes"]
+            boxes = box_xyxy_to_cxcywh(boxes)
+            boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
+            target["object_boxes"] = boxes
+        if "action_boxes" in target:
+            boxes = target["action_boxes"]
+            boxes = box_xyxy_to_cxcywh(boxes)
+            boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
+            target["action_boxes"] = boxes
         return image, target
 
 

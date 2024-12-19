@@ -186,15 +186,15 @@ class SetCriterion(nn.Module):
 
         human_target_classes = torch.full(human_src_logits.shape[:2], num_humans,
                                           dtype=torch.int64, device=human_src_logits.device)
-        human_target_classes[idx] = human_target_classes_o
+        human_target_classes[idx] = human_target_classes_o.to(human_target_classes.dtype)
 
         object_target_classes = torch.full(object_src_logits.shape[:2], self.num_classes,
                                            dtype=torch.int64, device=object_src_logits.device)
-        object_target_classes[idx] = object_target_classes_o
+        object_target_classes[idx] = object_target_classes_o.to(object_target_classes.dtype)
 
         action_target_classes = torch.full(action_src_logits.shape[:2], self.num_actions,
                                            dtype=torch.int64, device=action_src_logits.device)
-        action_target_classes[idx] = action_target_classes_o
+        action_target_classes[idx] = action_target_classes_o.to(action_target_classes.dtype)
 
         human_loss_ce = F.cross_entropy(human_src_logits.transpose(1, 2),
                                         human_target_classes, self.human_empty_weight)
