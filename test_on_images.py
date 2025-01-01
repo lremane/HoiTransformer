@@ -333,10 +333,10 @@ def run_on_images(args, img_path_list):
         img_rescale = resize_ensure_shortest_edge(img=img, size=672, max_size=1333)
         img_tensor = prepare_cv2_image4nn(img=img_rescale)
         hoi_list = predict_on_one_image(
-            args, model, device, img_tensor, img_size, hoi_th=0.6, human_th=0.4, object_th=0.4, top_k=5,
+            args, model, device, img_tensor, img_size, hoi_th=0.6, human_th=0.3, object_th=0.3, top_k=20,
             # args, model, device, img_tensor, img_size, hoi_th=0.1, human_th=0.1, object_th=0.1, top_k=50,
         )
-        print(f"hoi_list: {hoi_list}")
+        #print(f"hoi_list: {hoi_list}")
         img_name = 'img_%s_%06d.jpg' % (os.path.basename(img_path), idx_img)
         img_result = viz_hoi_result(img=img, hoi_list=hoi_list)
         cv2.imwrite(os.path.join(log_dir, img_name), img_result)
@@ -353,9 +353,9 @@ def main():
 
     if args.img_sheet is None:
         img_path_list = [
-            './data/hico/images/train2015/train2015_hanwha_QNF-8010_wallmount_0364.png',
+            'data/examples/eltern_raum_sitzend-converted_25.jpg',
         ]
-        #img_path_list = glob.glob("data/0initModel/*.jpg")
+        # img_path_list = glob.glob("data/hico/images/test2015/*.png")
     else:
         img_path_list = [l.strip() for l in open(args.img_sheet, 'r').readlines()]
 

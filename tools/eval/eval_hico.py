@@ -187,8 +187,7 @@ class hico():
             df = pd.DataFrame(json_data)
 
             model_path = os.path.join(args.output_dir, 'checkpoint.pth')
-            updated_model_path = os.path.join(args.output_dir, f'checkpoint_best.pth')
-            print(df['mAP Full'].max())
+            updated_model_path = os.path.join(args.output_dir, f'checkpoint_best_{args.epoch}.pth')
             if df['mAP Full'].max() < mAP:
                 shutil.move(model_path, updated_model_path)
 
@@ -511,7 +510,7 @@ def get_hoi_output(Image_dets, corre_mat=None):
 
 def main():
     parser = argparse.ArgumentParser()
-    # parser.add_argument("--output_file", type=str, default='../../log/result_s672_e048_hico_resnet50.json')
+    # parser.add_argument("--output_file", type=str, default='../../log/result_s672_e045_hico_resnet50.json')
     # parser.add_argument("--eval_path", default="../../data/hico/eval")
     parser.add_argument("--output_file", type=str)
     parser.add_argument("--eval_path", default="./data/hico/eval")

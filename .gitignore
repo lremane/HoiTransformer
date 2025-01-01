@@ -8,5 +8,5 @@ checkpoint
 data/
 eval.txt
 final_report.txt
-res50_hico_1cf00bb.pth
+res50_hico.pth
 res101_vcoco_ad55e00.pth

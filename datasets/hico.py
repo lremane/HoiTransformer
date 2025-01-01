@@ -514,7 +514,8 @@ class Compose(object):
 
 
 def make_hico_transforms(image_set, test_scale=-1):
-    scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
+    #scales = [640, 704, 768, 832, 896, 960, 1024, 1088, 1152, 1216, 1280]
+    scales = [608, 640, 672, 704, 736, 768, 800, 832, 896, 960, 1024]
     normalize = Compose([
         ToTensor(),
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
@@ -524,11 +525,11 @@ def make_hico_transforms(image_set, test_scale=-1):
             RandomHorizontalFlip(),
             RandomAdjustImage(),
             RandomSelect(
-                RandomResize(scales, max_size=1333),
+                RandomResize(scales, max_size=1500),  # Adjusted max_size for higher resolution
                 Compose([
                     RandomResize([400, 500, 600]),
                     RandomSizeCrop(384, 600),
-                    RandomResize(scales, max_size=1333),
+                    RandomResize(scales, max_size=1500),
                 ])
             ),
             normalize,
