@@ -330,10 +330,10 @@ def run_on_images(args, img_path_list):
         img, img_size = read_cv2_image(img_path=img_path)
 
         # inference on one image
-        img_rescale = resize_ensure_shortest_edge(img=img, size=672, max_size=1333)
-        img_tensor = prepare_cv2_image4nn(img=img_rescale)
+        #img_rescale = resize_ensure_shortest_edge(img=img, size=1600, max_size=1333)
+        img_tensor = prepare_cv2_image4nn(img=img)
         hoi_list = predict_on_one_image(
-            args, model, device, img_tensor, img_size, hoi_th=0.6, human_th=0.3, object_th=0.3, top_k=20,
+            args, model, device, img_tensor, img_size, hoi_th=0.6, human_th=0.4, object_th=0.4, top_k=20,
             # args, model, device, img_tensor, img_size, hoi_th=0.1, human_th=0.1, object_th=0.1, top_k=50,
         )
         #print(f"hoi_list: {hoi_list}")
@@ -352,10 +352,10 @@ def main():
     print(args)
 
     if args.img_sheet is None:
-        img_path_list = [
-            'data/examples/eltern_raum_sitzend-converted_25.jpg',
-        ]
-        # img_path_list = glob.glob("data/hico/images/test2015/*.png")
+        # img_path_list = [
+        #     'data/examples/overhead_lie-couch_sit-couch_0017.png',
+        # ]
+        img_path_list = glob.glob("data/hico/images/test2015/*.png")
     else:
         img_path_list = [l.strip() for l in open(args.img_sheet, 'r').readlines()]
 

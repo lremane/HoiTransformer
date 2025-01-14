@@ -13,6 +13,7 @@ import random
 import os
 import time
 from pathlib import Path
+from time import sleep
 
 import numpy as np
 import torch
@@ -185,8 +186,8 @@ def main(args):
         checkpoint = torch.load(args.resume, map_location='cpu')
         model_without_ddp.load_state_dict(checkpoint['model'])
         if args.dont_use_checkpoint_state and 'optimizer' in checkpoint and 'lr_scheduler' in checkpoint and 'epoch' in checkpoint:
-            optimizer.load_state_dict(checkpoint['optimizer'])
-            lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
+            # optimizer.load_state_dict(checkpoint['optimizer'])
+            # lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             args.start_epoch = checkpoint['epoch'] + 1
 
     print("Start training")
@@ -226,18 +227,21 @@ def main(args):
 
         torch.cuda.empty_cache()
 
-        subprocess.run(
-            [
-                "python3", "test.py",
-                "--backbone=resnet50",
-                "--batch_size=1",
-                "--dataset_file=hico",
-                "--log_dir=./",
-                f"--model_path={checkpoint_paths[0]}",
-                f"--epoch={epoch}"
-            ],
-            check=True
-        )
+        try:
+            subprocess.run(
+                [
+                    "python3", "test.py",
+                    "--backbone=resnet50",
+                    "--batch_size=1",
+                    "--dataset_file=hico",
+                    "--log_dir=./",
+                    f"--model_path={checkpoint_paths[0]}",
+                    f"--epoch={epoch}"
+                ],
+                check=True
+            )
+        except subprocess.CalledProcessError as e:
+            print(f"Subprocess failed with return code {e.returncode}. Continuing main program.")
 
     total_time = time.time() - start_time
     total_time_str = str(datetime.timedelta(seconds=int(total_time)))

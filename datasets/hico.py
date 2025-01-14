@@ -514,8 +514,9 @@ class Compose(object):
 
 
 def make_hico_transforms(image_set, test_scale=-1):
-    #scales = [640, 704, 768, 832, 896, 960, 1024, 1088, 1152, 1216, 1280]
-    scales = [608, 640, 672, 704, 736, 768, 800, 832, 896, 960, 1024]
+    #scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800, 832, 896]
+    # scales = [576, 608, 640, 672, 704, 736, 768, 800, 832, 896, 928]
+    scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
     normalize = Compose([
         ToTensor(),
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
@@ -524,17 +525,18 @@ def make_hico_transforms(image_set, test_scale=-1):
         return Compose([
             RandomHorizontalFlip(),
             RandomAdjustImage(),
-            RandomSelect(
-                RandomResize(scales, max_size=1500),  # Adjusted max_size for higher resolution
-                Compose([
-                    RandomResize([400, 500, 600]),
-                    RandomSizeCrop(384, 600),
-                    RandomResize(scales, max_size=1500),
-                ])
-            ),
+            # RandomSelect(
+            #     RandomResize(scales, max_size=1500),  # Adjusted max_size for higher resolution
+            #     Compose([
+            #         RandomResize([400, 500, 600]),
+            #         RandomSizeCrop(1200, 1800),
+            #         RandomResize(scales, max_size=1500),
+            #     ])
+            # ),
             normalize,
         ])
     if image_set == 'test':
+        test_scale = -1
         if test_scale == -1:
             return Compose([
                 normalize,
@@ -567,9 +569,9 @@ class HoiDetection(VisionDataset):
         ann = self.annotations[index]
         img_name = ann['image_id']
         target = ann['annotations']
-        if 'train2015' in img_name:
+        if 'train' in img_name:
             img_path = './data/hico/images/train2015/%s' % img_name
-        elif 'test2015' in img_name:
+        elif 'test' in img_name:
             img_path = './data/hico/images/test2015/%s' % img_name
         else:  # For single image visualization.
             raise NotImplementedError()
