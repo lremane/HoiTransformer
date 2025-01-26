@@ -239,28 +239,47 @@ class SetCriterion(nn.Module):
         idx = self._get_src_permutation_idx(indices)
 
         human_src_boxes = outputs['human_pred_boxes'][idx]
-        human_target_boxes = torch.cat([t['human_boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
-        object_src_boxes = outputs['object_pred_boxes'][idx]
-        object_target_boxes = torch.cat([t['object_boxes'][i] for t, (_, i) in zip(targets, indices)], dim=0)
+        human_target_boxes = torch.cat(
+            [t['human_boxes'][i] for t, (_, i) in zip(targets, indices) if len(i) > 0], dim=0
+        ) if any(len(i) > 0 for _, i in indices) else torch.empty(0, 4, device=human_src_boxes.device)
 
-        human_loss_bbox = F.l1_loss(human_src_boxes, human_target_boxes, reduction='none')
-        object_loss_bbox = F.l1_loss(object_src_boxes, object_target_boxes, reduction='none')
+        object_src_boxes = outputs['object_pred_boxes'][idx]
+        object_target_boxes = torch.cat(
+            [t['object_boxes'][i] for t, (_, i) in zip(targets, indices) if len(i) > 0], dim=0
+        ) if any(len(i) > 0 for _, i in indices) else torch.empty(0, 4, device=object_src_boxes.device)
 
         losses = dict()
-        losses['human_loss_bbox'] = human_loss_bbox.sum() / num_boxes
-        losses['object_loss_bbox'] = object_loss_bbox.sum() / num_boxes
+
+        # Handle empty tensors for human boxes
+        if human_target_boxes.numel() > 0 and human_src_boxes.numel() > 0:
+            human_loss_bbox = F.l1_loss(human_src_boxes, human_target_boxes, reduction='none')
+            losses['human_loss_bbox'] = human_loss_bbox.sum() / num_boxes
+
+            human_loss_giou = 1 - torch.diag(box_ops.generalized_box_iou(
+                box_ops.box_cxcywh_to_xyxy(human_src_boxes),
+                box_ops.box_cxcywh_to_xyxy(human_target_boxes)))
+            losses['human_loss_giou'] = human_loss_giou.sum() / num_boxes
+        else:
+            losses['human_loss_bbox'] = torch.tensor(0.0, device=human_src_boxes.device)
+            losses['human_loss_giou'] = torch.tensor(0.0, device=human_src_boxes.device)
+
+        # Handle empty tensors for object boxes
+        if object_target_boxes.numel() > 0 and object_src_boxes.numel() > 0:
+            object_loss_bbox = F.l1_loss(object_src_boxes, object_target_boxes, reduction='none')
+            losses['object_loss_bbox'] = object_loss_bbox.sum() / num_boxes
+
+            object_loss_giou = 1 - torch.diag(box_ops.generalized_box_iou(
+                box_ops.box_cxcywh_to_xyxy(object_src_boxes),
+                box_ops.box_cxcywh_to_xyxy(object_target_boxes)))
+            losses['object_loss_giou'] = object_loss_giou.sum() / num_boxes
+        else:
+            losses['object_loss_bbox'] = torch.tensor(0.0, device=object_src_boxes.device)
+            losses['object_loss_giou'] = torch.tensor(0.0, device=object_src_boxes.device)
+
+        # Total loss
         losses['loss_bbox'] = losses['human_loss_bbox'] + losses['object_loss_bbox']
-
-        human_loss_giou = 1 - torch.diag(box_ops.generalized_box_iou(
-            box_ops.box_cxcywh_to_xyxy(human_src_boxes),
-            box_ops.box_cxcywh_to_xyxy(human_target_boxes)))
-        object_loss_giou = 1 - torch.diag(box_ops.generalized_box_iou(
-            box_ops.box_cxcywh_to_xyxy(object_src_boxes),
-            box_ops.box_cxcywh_to_xyxy(object_target_boxes)))
-        losses['human_loss_giou'] = human_loss_giou.sum() / num_boxes
-        losses['object_loss_giou'] = object_loss_giou.sum() / num_boxes
-
         losses['loss_giou'] = losses['human_loss_giou'] + losses['object_loss_giou']
+
         return losses
 
     def _get_src_permutation_idx(self, indices):

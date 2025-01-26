@@ -203,6 +203,7 @@ class hico():
         }
 
         print(eval_path)
+        print(mAP, mAP_inter, mAP_noninter, '--------------------above')
         with open(eval_path, 'a') as file:
             file.write(json.dumps(eval_log) + "\n")
 
@@ -516,6 +517,7 @@ def main():
     parser.add_argument("--eval_path", default="./data/hico/eval")
     parser.add_argument('--epoch', type=int)
     parser.add_argument('--output_dir', type=str)
+    parser.add_argument('--validation_file', type=str)
 
     args = parser.parse_args()
 
@@ -531,7 +533,7 @@ def main():
     output_hoi = get_hoi_output(det, corre_mat)
 
     # 2. evaluation
-    hoi_eval = hico(os.path.join(args.eval_path, 'test_hico.json'))
+    hoi_eval = hico(os.path.join(args.eval_path, args.validation_file))
     map = hoi_eval.evalution(output_hoi, args, save_mAP=None)
 
     return map

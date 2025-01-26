@@ -1,3 +1,22 @@
+# Setup
+- experimente wurden in ubuntu 24.04. ausgeführt
+- clone this repository: git clone https://github.com/lremane/HoiTransformer.git
+- install miniconda: https://docs.anaconda.com/miniconda/install/#quick-command-line-install
+- activate miniconda: source ~/miniconda3/bin/activate
+- create HoiTransformer environment vom environment.yml file aus dem Root-Verzeichnis der Projektes: conda env create --name HoiTransformer --file environment.yml
+- acitivate HoiTransformer environment: conda activate HoiTransformer
+- place the training and test data in the direcoty: data
+
+## training
+- place in root directory pretrained model resnet-model: link to modells
+- with: pip install gdown && gdown https://drive.google.com/uc?id=1-WQnnTHB7f7X2NpqPVqIO6tvWN6k1Ot8
+- download detr modells: cd data/detr_coco && wget https://dl.fbaipublicfiles.com/detr/detr-r50-e632da11.pth
+- run finetune.py: python finetune.py --epochs=250 --lr_drop=10 --dataset_file=hico --batch_size=2 --backbone=resnet50 --lr=0.00001 --lr_backbone=0.00001 --resume=res50_hico.pth
+
+## testing
+python test.py --backbone=resnet50 --batch_size=1 --dataset_file=hico --log_dir=./ --model_path=checkpoint/p_202501261602//checkpoint.pth --epoch=164
+
+
 # HOI Transformer
 Code for CVPR 2021 accepted paper [End-to-End Human Object Interaction Detection with HOI Transformer](https://arxiv.org/abs/2103.04503).
 

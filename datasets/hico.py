@@ -298,15 +298,15 @@ def hflip(image, target, image_set='train'):
         return flipped_image, target
 
     w, h = image.size
-    if "human_boxes" in target:
+    if "human_boxes" in target and target["human_boxes"].numel() > 0:
         boxes = target["human_boxes"]
         boxes = boxes[:, [2, 1, 0, 3]] * torch.as_tensor([-1, 1, -1, 1]) + torch.as_tensor([w, 0, w, 0])
         target["human_boxes"] = boxes
-    if "object_boxes" in target:
+    if "object_boxes" in target and target["object_boxes"].numel() > 0:
         boxes = target["object_boxes"]
         boxes = boxes[:, [2, 1, 0, 3]] * torch.as_tensor([-1, 1, -1, 1]) + torch.as_tensor([w, 0, w, 0])
         target["object_boxes"] = boxes
-    if "action_boxes" in target:
+    if "action_boxes" in target and target["action_boxes"].numel() > 0:
         boxes = target["action_boxes"]
         boxes = boxes[:, [2, 1, 0, 3]] * torch.as_tensor([-1, 1, -1, 1]) + torch.as_tensor([w, 0, w, 0])
         target["action_boxes"] = boxes
@@ -381,15 +381,15 @@ def resize(image, target, size, max_size=None, image_set='train'):
     ratios = tuple(float(s) / float(s_orig) for s, s_orig in zip(rescaled_image.size, image.size))
     ratio_width, ratio_height = ratios
 
-    if "human_boxes" in target:
+    if "human_boxes" in target and target["human_boxes"].numel() > 0:
         boxes = target["human_boxes"]
         scaled_boxes = boxes * torch.as_tensor([ratio_width, ratio_height, ratio_width, ratio_height])
         target["human_boxes"] = scaled_boxes
-    if "object_boxes" in target:
+    if "object_boxes" in target and target["object_boxes"].numel() > 0:
         boxes = target["object_boxes"]
         scaled_boxes = boxes * torch.as_tensor([ratio_width, ratio_height, ratio_width, ratio_height])
         target["object_boxes"] = scaled_boxes
-    if "action_boxes" in target:
+    if "action_boxes" in target and target["action_boxes"].numel() > 0:
         boxes = target["action_boxes"]
         scaled_boxes = boxes * torch.as_tensor([ratio_width, ratio_height, ratio_width, ratio_height])
         target["action_boxes"] = scaled_boxes
@@ -416,7 +416,7 @@ def crop(image, org_target, region, image_set='train'):
     i, j, h, w = region
     fields = ["human_labels", "object_labels", "action_labels"]
 
-    if "human_boxes" in target:
+    if "human_boxes" in target and target["human_boxes"].numel() > 0:
         boxes = target["human_boxes"]
         max_size = torch.as_tensor([w, h], dtype=torch.float32)
         cropped_boxes = boxes - torch.as_tensor([j, i, j, i])
@@ -424,7 +424,7 @@ def crop(image, org_target, region, image_set='train'):
         cropped_boxes = cropped_boxes.clamp(min=0)
         target["human_boxes"] = cropped_boxes.reshape(-1, 4)
         fields.append("human_boxes")
-    if "object_boxes" in target:
+    if "object_boxes" in target and target["object_boxes"].numel() > 0:
         boxes = target["object_boxes"]
         max_size = torch.as_tensor([w, h], dtype=torch.float32)
         cropped_boxes = boxes - torch.as_tensor([j, i, j, i])
@@ -432,7 +432,7 @@ def crop(image, org_target, region, image_set='train'):
         cropped_boxes = cropped_boxes.clamp(min=0)
         target["object_boxes"] = cropped_boxes.reshape(-1, 4)
         fields.append("object_boxes")
-    if "action_boxes" in target:
+    if "action_boxes" in target and target["action_boxes"].numel() > 0:
         boxes = target["action_boxes"]
         max_size = torch.as_tensor([w, h], dtype=torch.float32)
         cropped_boxes = boxes - torch.as_tensor([j, i, j, i])
@@ -442,7 +442,7 @@ def crop(image, org_target, region, image_set='train'):
         fields.append("action_boxes")
 
     # remove elements for which the boxes or masks that have zero area
-    if "human_boxes" in target and "object_boxes" in target:
+    if "human_boxes" in target and target["human_boxes"].numel() > 0 and "object_boxes" in target and target["object_boxes"].numel() > 0:
         cropped_boxes = target['human_boxes'].reshape(-1, 2, 2)
         keep1 = torch.all(cropped_boxes[:, 1, :] > cropped_boxes[:, 0, :], dim=1)
         cropped_boxes = target['object_boxes'].reshape(-1, 2, 2)
@@ -485,21 +485,23 @@ class Normalize(object):
         if image_set in ['test']:
             return image, target
         h, w = image.shape[-2:]
-        if "human_boxes" in target:
+        if "human_boxes" in target and target["human_boxes"].numel() > 0:
             boxes = target["human_boxes"]
             boxes = box_xyxy_to_cxcywh(boxes)
             boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
             target["human_boxes"] = boxes
-        if "object_boxes" in target:
+        if "object_boxes" in target and target["object_boxes"].numel() > 0:
             boxes = target["object_boxes"]
             boxes = box_xyxy_to_cxcywh(boxes)
             boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
             target["object_boxes"] = boxes
-        if "action_boxes" in target:
+
+        if "action_boxes" in target and target["action_boxes"].numel() > 0:
             boxes = target["action_boxes"]
             boxes = box_xyxy_to_cxcywh(boxes)
             boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
             target["action_boxes"] = boxes
+
         return image, target
 
 
@@ -560,7 +562,7 @@ class HoiDetection(VisionDataset):
         super(HoiDetection, self).__init__(root, transforms, transform, target_transform)
         annotations = [parse_one_gt_line(l.strip()) for l in open(annFile, 'r').readlines()]
         if self.image_set in ['train']:
-            self.annotations = [a for a in annotations if len(a['annotations']['action_labels']) > 0]
+            self.annotations = annotations# [a for a in annotations if len(a['annotations']['action_labels']) > 0]
         else:
             self.annotations = annotations
         self.transforms = transforms
