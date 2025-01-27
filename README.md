@@ -17,6 +17,23 @@
 python test.py --backbone=resnet50 --batch_size=1 --dataset_file=hico --log_dir=./ --model_path=checkpoint/p_202501261602//checkpoint.pth --epoch=164
 
 
+
+## visualize results
+- either visualize a specific image with: --image_name or all images in a directoy with --image_directory. the first will be preferred if both are provided
+- run: python test_on_images.py --image_directory=<directory_name_with_images> --backbone=resnet50 --batch_size=1 --log_dir=<output_directory> --model_path=<model_name.pth> --dataset=hico
+
+Customize visualization thresholds with the following optional arguments:
+- **`--hoi_th`** (default: `0.6`): Threshold for visualizing Human-Object Interactions.  
+- **`--human_th`** (default: `0.4`): Threshold for visualizing humans.  
+- **`--object_th`** (default: `0.4`): Threshold for visualizing objects.  
+- **`--top_k`** (default: `5`): Maximum number of interactions to visualize.  
+
+Adjust these values as needed when running the script. Example:  
+```bash
+python test_on_images.py --hoi_th=0.5 --image_path=<directory_name_with_images> --backbone=resnet50 --batch_size=1 --log_dir=test_results --model_path=<model_name.pth> --dataset=hico
+```
+
+
 # HOI Transformer
 Code for CVPR 2021 accepted paper [End-to-End Human Object Interaction Detection with HOI Transformer](https://arxiv.org/abs/2103.04503).
 
@@ -160,10 +177,3 @@ We propose a new annotation format 'ODGT' which is much easier to understand, an
 ## Acknowledgement
 We sincerely thank all previous works, especially [DETR](https://github.com/facebookresearch/detr), [PPDM](https://github.com/YueLiao/PPDM), [iCAN](https://github.com/vt-vl-lab/iCAN), for some of the codes are built upon them.
 
-## Laurins Notes
-- the results for hico-dataset could be confirmed
-- start learning rates are: 0.0001 (transformer), 1e-05 (backbone)
-- current are: 1e-05, 1e-06
-- lr-scheduler: {'step_size': 110, 'gamma': 0.1, 'base_lrs': [0.0001, 1e-05], 'last_epoch': 150, '_step_count': 151, '_get_lr_called_within_step': False, '_last_lr': [1e-05, 1.0000000000000002e-06]}
-
--> ich würde die learning rate glaube etwas niedriger noch setzen -> und in der ablation study nochmal etwas herum probieren
