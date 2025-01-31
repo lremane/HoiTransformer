@@ -298,15 +298,15 @@ def hflip(image, target, image_set='train'):
         return flipped_image, target
 
     w, h = image.size
-    if "human_boxes" in target:
+    if "human_boxes" in target and target["human_boxes"].numel() > 0:
         boxes = target["human_boxes"]
         boxes = boxes[:, [2, 1, 0, 3]] * torch.as_tensor([-1, 1, -1, 1]) + torch.as_tensor([w, 0, w, 0])
         target["human_boxes"] = boxes
-    if "object_boxes" in target:
+    if "object_boxes" in target and target["object_boxes"].numel() > 0:
         boxes = target["object_boxes"]
         boxes = boxes[:, [2, 1, 0, 3]] * torch.as_tensor([-1, 1, -1, 1]) + torch.as_tensor([w, 0, w, 0])
         target["object_boxes"] = boxes
-    if "action_boxes" in target:
+    if "action_boxes" in target and target["action_boxes"].numel() > 0:
         boxes = target["action_boxes"]
         boxes = boxes[:, [2, 1, 0, 3]] * torch.as_tensor([-1, 1, -1, 1]) + torch.as_tensor([w, 0, w, 0])
         target["action_boxes"] = boxes
@@ -381,15 +381,15 @@ def resize(image, target, size, max_size=None, image_set='train'):
     ratios = tuple(float(s) / float(s_orig) for s, s_orig in zip(rescaled_image.size, image.size))
     ratio_width, ratio_height = ratios
 
-    if "human_boxes" in target:
+    if "human_boxes" in target and target["human_boxes"].numel() > 0:
         boxes = target["human_boxes"]
         scaled_boxes = boxes * torch.as_tensor([ratio_width, ratio_height, ratio_width, ratio_height])
         target["human_boxes"] = scaled_boxes
-    if "object_boxes" in target:
+    if "object_boxes" in target and target["object_boxes"].numel() > 0:
         boxes = target["object_boxes"]
         scaled_boxes = boxes * torch.as_tensor([ratio_width, ratio_height, ratio_width, ratio_height])
         target["object_boxes"] = scaled_boxes
-    if "action_boxes" in target:
+    if "action_boxes" in target and target["action_boxes"].numel() > 0:
         boxes = target["action_boxes"]
         scaled_boxes = boxes * torch.as_tensor([ratio_width, ratio_height, ratio_width, ratio_height])
         target["action_boxes"] = scaled_boxes
@@ -416,7 +416,7 @@ def crop(image, org_target, region, image_set='train'):
     i, j, h, w = region
     fields = ["human_labels", "object_labels", "action_labels"]
 
-    if "human_boxes" in target:
+    if "human_boxes" in target and target["human_boxes"].numel() > 0:
         boxes = target["human_boxes"]
         max_size = torch.as_tensor([w, h], dtype=torch.float32)
         cropped_boxes = boxes - torch.as_tensor([j, i, j, i])
@@ -424,7 +424,7 @@ def crop(image, org_target, region, image_set='train'):
         cropped_boxes = cropped_boxes.clamp(min=0)
         target["human_boxes"] = cropped_boxes.reshape(-1, 4)
         fields.append("human_boxes")
-    if "object_boxes" in target:
+    if "object_boxes" in target and target["object_boxes"].numel() > 0:
         boxes = target["object_boxes"]
         max_size = torch.as_tensor([w, h], dtype=torch.float32)
         cropped_boxes = boxes - torch.as_tensor([j, i, j, i])
@@ -432,7 +432,7 @@ def crop(image, org_target, region, image_set='train'):
         cropped_boxes = cropped_boxes.clamp(min=0)
         target["object_boxes"] = cropped_boxes.reshape(-1, 4)
         fields.append("object_boxes")
-    if "action_boxes" in target:
+    if "action_boxes" in target and target["action_boxes"].numel() > 0:
         boxes = target["action_boxes"]
         max_size = torch.as_tensor([w, h], dtype=torch.float32)
         cropped_boxes = boxes - torch.as_tensor([j, i, j, i])
@@ -442,7 +442,7 @@ def crop(image, org_target, region, image_set='train'):
         fields.append("action_boxes")
 
     # remove elements for which the boxes or masks that have zero area
-    if "human_boxes" in target and "object_boxes" in target:
+    if "human_boxes" in target and target["human_boxes"].numel() > 0 and "object_boxes" in target and target["object_boxes"].numel() > 0:
         cropped_boxes = target['human_boxes'].reshape(-1, 2, 2)
         keep1 = torch.all(cropped_boxes[:, 1, :] > cropped_boxes[:, 0, :], dim=1)
         cropped_boxes = target['object_boxes'].reshape(-1, 2, 2)
@@ -485,21 +485,23 @@ class Normalize(object):
         if image_set in ['test']:
             return image, target
         h, w = image.shape[-2:]
-        if "human_boxes" in target:
+        if "human_boxes" in target and target["human_boxes"].numel() > 0:
             boxes = target["human_boxes"]
             boxes = box_xyxy_to_cxcywh(boxes)
             boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
             target["human_boxes"] = boxes
-        if "object_boxes" in target:
+        if "object_boxes" in target and target["object_boxes"].numel() > 0:
             boxes = target["object_boxes"]
             boxes = box_xyxy_to_cxcywh(boxes)
             boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
             target["object_boxes"] = boxes
-        if "action_boxes" in target:
+
+        if "action_boxes" in target and target["action_boxes"].numel() > 0:
             boxes = target["action_boxes"]
             boxes = box_xyxy_to_cxcywh(boxes)
             boxes = boxes / torch.tensor([w, h, w, h], dtype=torch.float32)
             target["action_boxes"] = boxes
+
         return image, target
 
 
@@ -513,8 +515,8 @@ class Compose(object):
         return image, target
 
 
-def make_hico_transforms(image_set, test_scale=-1):
-    scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
+def make_hico_transforms(image_set, image_size, test_scale=-1):
+    scales = [image_size - 48 * i for i in range(10) if (image_size - 32 * i) > 400]
     normalize = Compose([
         ToTensor(),
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
@@ -524,16 +526,16 @@ def make_hico_transforms(image_set, test_scale=-1):
             RandomHorizontalFlip(),
             RandomAdjustImage(),
             RandomSelect(
-                RandomResize(scales, max_size=1333),
+                RandomResize(scales, max_size=image_size),
                 Compose([
-                    RandomResize([400, 500, 600]),
-                    RandomSizeCrop(384, 600),
-                    RandomResize(scales, max_size=1333),
+                    RandomSizeCrop(scales[-1], image_size),
+                    RandomResize(scales, max_size=image_size),
                 ])
             ),
             normalize,
         ])
     if image_set == 'test':
+        test_scale = -1
         if test_scale == -1:
             return Compose([
                 normalize,
@@ -557,7 +559,7 @@ class HoiDetection(VisionDataset):
         super(HoiDetection, self).__init__(root, transforms, transform, target_transform)
         annotations = [parse_one_gt_line(l.strip()) for l in open(annFile, 'r').readlines()]
         if self.image_set in ['train']:
-            self.annotations = [a for a in annotations if len(a['annotations']['action_labels']) > 0]
+            self.annotations = annotations# [a for a in annotations if len(a['annotations']['action_labels']) > 0]
         else:
             self.annotations = annotations
         self.transforms = transforms
@@ -566,14 +568,14 @@ class HoiDetection(VisionDataset):
         ann = self.annotations[index]
         img_name = ann['image_id']
         target = ann['annotations']
-        if 'train2015' in img_name:
-            img_path = './data/hico/images/train2015/%s' % img_name
-        elif 'test2015' in img_name:
-            img_path = './data/hico/images/test2015/%s' % img_name
+        if 'train' in img_name:
+            img_path = './data/hico/images/train/%s' % img_name
+        elif 'test' in img_name:
+            img_path = './data/hico/images/test/%s' % img_name
         else:  # For single image visualization.
             raise NotImplementedError()
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-        img = Image.fromarray(img[:, :, ::-1]).convert('RGB')
+        img = Image.fromarray(img[:, :, ::-1]).convert('RGB') # convert to rgb format
         if self.transforms is not None:
             img, target = self.transforms(img, target, self.image_set)
         return img, target
@@ -582,7 +584,7 @@ class HoiDetection(VisionDataset):
         return len(self.annotations)
 
 
-def build(image_set, test_scale=-1):
+def build(image_set, image_size, test_scale=-1):
     assert image_set in ['train', 'test'], image_set
     if image_set == 'train':
         annotation_file = './data/hico/hico_trainval_remake.odgt'
@@ -590,5 +592,5 @@ def build(image_set, test_scale=-1):
         annotation_file = './data/hico/hico_test_remake.odgt'
 
     dataset = HoiDetection(root='./data/hico', annFile=annotation_file,
-                           transforms=make_hico_transforms(image_set, test_scale), image_set=image_set)
+                           transforms=make_hico_transforms(image_set, image_size, test_scale), image_set=image_set)
     return dataset
