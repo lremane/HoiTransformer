@@ -515,8 +515,7 @@ class Compose(object):
         return image, target
 
 
-def make_hico_transforms(image_set, test_scale=-1):
-    image_size = 1600
+def make_hico_transforms(image_set, image_size, test_scale=-1):
     scales = [image_size - 48 * i for i in range(10) if (image_size - 32 * i) > 400]
     normalize = Compose([
         ToTensor(),
@@ -527,11 +526,10 @@ def make_hico_transforms(image_set, test_scale=-1):
             RandomHorizontalFlip(),
             RandomAdjustImage(),
             RandomSelect(
-                RandomResize(scales, max_size=2048),
+                RandomResize(scales, max_size=image_size),
                 Compose([
-                    RandomResize([1200, 1400, 1600]),
-                    RandomSizeCrop(1200, 2048),
-                    RandomResize(scales, max_size=2048),
+                    RandomSizeCrop(scales[-1], image_size),
+                    RandomResize(scales, max_size=image_size),
                 ])
             ),
             normalize,
@@ -586,7 +584,7 @@ class HoiDetection(VisionDataset):
         return len(self.annotations)
 
 
-def build(image_set, test_scale=-1):
+def build(image_set, image_size, test_scale=-1):
     assert image_set in ['train', 'test'], image_set
     if image_set == 'train':
         annotation_file = './data/hico/hico_trainval_remake.odgt'
@@ -594,5 +592,5 @@ def build(image_set, test_scale=-1):
         annotation_file = './data/hico/hico_test_remake.odgt'
 
     dataset = HoiDetection(root='./data/hico', annFile=annotation_file,
-                           transforms=make_hico_transforms(image_set, test_scale), image_set=image_set)
+                           transforms=make_hico_transforms(image_set, image_size, test_scale), image_set=image_set)
     return dataset

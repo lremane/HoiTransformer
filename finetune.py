@@ -40,6 +40,7 @@ def create_log_dir(checkpoint='checkpoint', log_path='/data/LOG/train_log'):
 def get_args_parser():
     parser = argparse.ArgumentParser('Set transformer detector', add_help=False)
     parser.add_argument('--dont_use_checkpoint_state', action='store_false')
+    parser.add_argument('--image_size', type=int, help='specifies the input image size for augmentation')
 
     parser.add_argument('--lr', default=1e-4, type=float)
     parser.add_argument('--lr_backbone', default=1e-5, type=float)

@@ -34,6 +34,7 @@ def get_args_parser():
     parser.add_argument('--epochs', default=250, type=int)
     parser.add_argument('--lr_drop', default=200, type=int)
     parser.add_argument('--clip_max_norm', default=0.1, type=float, help='gradient clipping max norm')
+    parser.add_argument('--image_size', default=-1, type=int, help='specifies the input image size for augmentation')
 
     # Backbone.
     parser.add_argument('--backbone', choices=['resnet50', 'resnet101'], required=True,
@@ -161,7 +162,7 @@ def inference_on_data(args, model_path, image_set, max_to_viz=10, test_scale=-1)
     model.to(device)
     model.eval()
 
-    dataset_val = build_dataset(image_set=image_set, args=args, test_scale=test_scale)
+    dataset_val = build_dataset(image_set=image_set, args=args, test_scale=0)
     sampler_val = torch.utils.data.SequentialSampler(dataset_val)
     data_loader_val = DataLoader(dataset_val, args.batch_size, sampler=sampler_val,
                                  drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers)
@@ -394,6 +395,7 @@ def run_and_eval(args, model_path, test_scale, max_to_viz=10, save_image=False):
     model_output_file = inference_on_data(
         args=args,
         model_path=model_path,
+        image_set='test',
         test_scale=test_scale,
         max_to_viz=max_to_viz,
     )
@@ -419,7 +421,7 @@ def main():
     python3 test.py --dataset_file=hico --backbone=resnet50 --batch_size=1 --log_dir=./ --model_path=your_model_path
     """
     parser = get_args_parser()
-    parser.add_argument('--epoch', type=int)
+    parser.add_argument('--epoch', type=int, default=0)
 
     args = parser.parse_args()
     print(args)
