@@ -1,4 +1,11 @@
+colorama
 cython
-torch>=1.5.0
-torchvision>=0.6.0
+fsspec
+opencv-python #==4.3.0.38
 scipy
+torch
+torchaudio
+torchvision
+tqdm
+matplotlib
+pandas

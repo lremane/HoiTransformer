@@ -1,143 +1,136 @@
-# HOI Transformer
-Code for CVPR 2021 accepted paper [End-to-End Human Object Interaction Detection with HOI Transformer](https://arxiv.org/abs/2103.04503).
+# Human-Object Interaction Detection in Fisheye-Distorted Images
 
-This method also won 2nd Place Award in HOI Challenge in [Person In Context](http://www.picdataset.com/challenge/leaderboard/pic2021) in CVPR Workshop 2021.
+## Overview
+This repository contains the implementation code for adapting the **HoiTransformer** model—originally trained on the **HICO-DET** dataset—to detect **Human-Object Interactions (HOI)** in **fisheye-distorted images**.
 
 <div align="center">
   <img src="data/architecture.png" width="900px" />
 </div>
 
+### Features
+- **Transfer Learning Implementation**: Adapting the HoiTransformer model for fisheye images.
+- **Inference Pipeline**: Efficient HOI detection and analysis.
+- **Visualization Tools**: Methods for analyzing and interpreting model predictions.
 
-## TODO list
+This model was fine-tuned using two custom fisheye image datasets, developed in collaboration with **ScaDS.AI** as part of a bachelor’s thesis. Due to privacy constraints, these datasets are **not publicly available**. For access inquiries, please contact the repository maintainer.
 
-- [x] HICO-DET Code & DataSet
-- [x] V-COCO Code & DataSet
-- [x] HOI-A Code & DataSet
-- [x] HICO-DET [Res50](https://drive.google.com/file/d/1-WQnnTHB7f7X2NpqPVqIO6tvWN6k1Ot8/view?usp=sharing) Res101
-- [x] V-COCO Res50 [Res101](https://drive.google.com/file/d/1HZH3fUpiou2-f91_OvHnTX6feZNqxHa7/view?usp=sharing)
-- [x] HOI-A [Res50](https://drive.google.com/file/d/1bNrFQ6a8aKBzwWc0MAdG2f24StMP9lhY/view?usp=sharing) Res101
-- [x] Swin-B Code
+---
 
+## System Requirements
+- **OS**: Ubuntu 24.04 (recommended)
+- **Package Manager**: Miniconda
+- **Hardware**: NVIDIA GPU with CUDA support
 
-## Performance
-|Model|HICO-DET (Full/Rare/NonRare)|V-COCO|HOI-A|
-|---|---|---|---|
-|Res50|28.92/19.83/31.64|51.15|73.23|
+---
 
+## Installation
 
-## Reproduction
-
-We recomend you to setup in the following steps:
-
-1.Clone the repo.
-```
-git clone https://github.com/bbepoch/HoiTransformer.git
-```
-
-2.Download the MS-COCO pretrained [DETR](https://github.com/facebookresearch/detr) model.
+### 1. Clone the Repository
 ```bash
-cd data/detr_coco && bash download_model.sh
+git clone https://github.com/lremane/HoiTransformer.git
+cd HoiTransformer
 ```
 
-3.Download the annotation files for HICO-DET, V-COCO and HOI-A.
+### 2. Install Miniconda (if not already installed)
 ```bash
-cd data && bash download_annotations.sh
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash Miniconda3-latest-Linux-x86_64.sh
 ```
 
-4.Download the image files for [HICO-DET](https://drive.google.com/open?id=1QZcJmGVlF9f4h-XLWe9Gkmnmj2z1gSnk), [V-COCO](https://cocodataset.org/#download) and [HOI-A](https://drive.google.com/drive/folders/15xrIt-biSmE9hEJ2W6lWlUmdDmhatjKt). Instead, we provide a [script](data/download_images.sh) to get all of them. A required directory structure is:
-
-        HoiTransformer/
-        ├── data/
-        │   ├── detr_coco/
-        │   ├── hico/
-        │   │   ├── eval/
-        │   │   └── images/
-        │   │       ├── train2015/
-        │   │       └── test2015/
-        │   ├── hoia/
-        │   │   ├── eval/
-        │   │   └── images/
-        │   │       ├── trainval/
-        │   │       └── test/
-        │   └── vcoco/
-        │       ├── eval/
-        │       └── images/
-        │           ├── train2014/
-        │           └── val2014/
-        ├── datasets/
-        ├── models/
-        ├── tools/
-        ├── util/
-        ├── engin.py
-        ├── main.py
-        └── test.py
-
-5.OPTIONAL SETTINGS. When the above subdirectories in 'data' are all ready, you can train a model on any one of the three benchmarks. But before that, we highly recommend you to move the whole folder 'data' to another place on your computer, e.g. '/home/hoi/data', and only put a soft link named 'data' under 'HoiTransformer'.
+### 3. Create and Activate the Environment
+Please use the provided`environment.yml`to reproduce results:
 ```bash
-# Optional but recommended to separate data from code.
-mv data /home/hoi/
-ln -s /home/hoi/data data
+conda env create --name HoiTransformer --file environment.yml
+conda activate HoiTransformer
 ```
 
-6.Train a model.
+### 4. Organize Datasets
+Ensure your training and testing datasets are structured in the `data/` directory. For transfer learning using the **HICO-DET pretrained model**, follow this structure:
 ```
-# Train on HICO-DET.
-python3 -m torch.distributed.launch --nproc_per_node=8 --use_env main.py --epochs=150 --lr_drop=110 --dataset_file=hico --batch_size=2 --backbone=resnet50
-
-# Train on HOI-A.
-python3 -m torch.distributed.launch --nproc_per_node=8 --use_env main.py --epochs=150 --lr_drop=110 --dataset_file=hoia --batch_size=2 --backbone=resnet50
-
-# Train on V-COCO.
-python3 -m torch.distributed.launch --nproc_per_node=8 --use_env main.py --epochs=150 --lr_drop=110 --dataset_file=vcoco --batch_size=2 --backbone=resnet50
-
-# Training longer can get even better performance.
+HoiTransformer/
+└── data/
+    ├── detr_coco/
+    └── hico/
+        ├── eval/
+        └── images/
+            ├── train/
+            └── test/
 ```
+An example dataset can be found in the official [HoiTransformer Repository](https://github.com/bbepoch/HoiTransformer).
 
-7.Test a model.
-```
-python3 test.py --backbone=resnet50 --batch_size=1 --dataset_file=hico --log_dir=./ --model_path=your_model_path
-```
+---
 
+## Training
 
-## Annotations
-
-We propose a new annotation format 'ODGT' which is much easier to understand, and we have provided annotation files for all the existing benchmarks, i.e. HICO-DET, HOI-A, V-COCO, so you don't have to know how to get it, just use it. The core structure of 'ODGT' format is:
-```
-{
-    file_name: XXX.jpg,
-    width: image width,
-    height: image height,
-    gtboxes: [
-        {
-            box: [x, y, w, h],
-            tag: object category name,
-        },
-        ...
-    ],
-    hoi: [
-        {
-            subject_id: human box index in gtboxes,
-            object_id: object box index in gtboxes,
-            interaction: hoi category name,
-        },
-        ...
-    ],
-}
+### 1. Download Pretrained Models
+#### ResNet Backbone (Weight Initialization)
+```bash
+pip install gdown
+gdown https://drive.google.com/uc?id=1-WQnnTHB7f7X2NpqPVqIO6tvWN6k1Ot8 -O res50_hico_1cf00bb.pth
 ```
 
-
-## Citation
-
-```
-@inproceedings{zou2021_hoitrans,
-  author = {Zou, Cheng and Wang, Bohan and Hu, Yue and Liu, Junqi and Wu, Qian and Zhao, Yu and Li, Boxun and Zhang, Chenguang and Zhang, Chi and Wei, Yichen and Sun, Jian},
-  title = {End-to-End Human Object Interaction Detection with HOI Transformer},
-  booktitle={CVPR},
-  year = {2021},
-}
+#### DETR-R50 Transformer (Weight Initialization)
+```bash
+wget https://dl.fbaipublicfiles.com/detr/detr-r50-e632da11.pth -P data/detr_coco/
 ```
 
+### 2. Configure Training
+Determine the maximum image dimension in your dataset (e.g., `--image_size=1600` for **1600×1600** images).
 
-## Acknowledgement
-We sincerely thank all previous works, especially [DETR](https://github.com/facebookresearch/detr), [PPDM](https://github.com/YueLiao/PPDM), [iCAN](https://github.com/vt-vl-lab/iCAN), for some of the codes are built upon them.
+### 3. Start Training
+```bash
+python finetune.py \
+    --resume=res50_hico_1cf00bb.pth \
+    --dataset_file=hico \
+    --image_size=1600 \
+    --epochs=20 \
+    --lr_drop=10 \
+    --batch_size=2 \
+    --backbone=resnet50 \
+    --lr=0.00001 \
+    --lr_backbone=0.00001 \
+    --dont_use_checkpoint_state
+```
+
+---
+
+## Model Evaluation
+
+### 1. Performance Metrics (mAP, Inference Speed)
+```bash
+python test.py \
+    --model_path=model_name.pth \
+    --backbone=resnet50 \
+    --batch_size=1 \
+    --dataset_file=hico \
+    --log_dir=./
+```
+
+### 2. Result Visualization
+```bash
+python test_on_images.py \
+    --image_directory=<input_directory> \
+    --backbone=resnet50 \
+    --batch_size=1 \
+    --log_dir=<output_directory> \
+    --model_path=<model_name>.pth \
+    --dataset=hico \
+    --hoi_th=0.6 \
+    --human_th=0.4 \
+    --object_th=0.4 \
+    --top_k=5
+```
+
+#### Threshold Parameters
+- `--hoi_th`: HOI confidence threshold (**default: 0.6**)
+- `--human_th`: Human detection confidence threshold (**default: 0.4**)
+- `--object_th`: Object detection confidence threshold (**default: 0.4**)
+- `--top_k`: Maximum interactions to visualize (**default: 5**)
+
+---
+
+## Acknowledgements
+This work builds upon research from: [End-to-End Human Object Interaction Detection with HOI Transformer](https://arxiv.org/abs/2103.04503).
+
+The original implementation can be found at: [HoiTransformer Repository](https://github.com/bbepoch/HoiTransformer).
 

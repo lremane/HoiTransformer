@@ -3,6 +3,7 @@
 # ------------------------------------------------------------------------
 
 import argparse
+import glob
 import random
 import os
 from tqdm import tqdm
@@ -32,7 +33,7 @@ def get_args_parser():
     parser.add_argument('--clip_max_norm', default=0.1, type=float, help='gradient clipping max norm')
 
     # Backbone.
-    parser.add_argument('--backbone', choices=['resnet50', 'resnet101'], required=True,
+    parser.add_argument('--backbone', choices=['resnet50', 'resnet101', 'swin'], required=True,
                         help="Name of the convolutional backbone to use")
     parser.add_argument('--position_embedding', default='sine', type=str, choices=('sine', 'learned'),
                         help="Type of positional embedding to use on top of the image features")
@@ -94,6 +95,15 @@ def get_args_parser():
 
     # Visualization.
     parser.add_argument('--img_sheet', help='File containing image paths.')
+    parser.add_argument('--image_directory', help='path containing images for inference')
+    parser.add_argument('--image_name', help='path to specific image for inference')
+
+    # Thresholding
+    parser.add_argument('--hoi_th', default=0.6, type=float, help='threshold percentage for visualising interaction')
+    parser.add_argument('--human_th', default=0.4, type=float, help='threshold percentage for visualising human')
+    parser.add_argument('--object_th', default=0.4, type=float, help='threshold percentage for visualising object')
+    parser.add_argument('--top_k', default=5, type=float, help='how many hoi are max. visualized')
+
     return parser
 
 
@@ -148,7 +158,7 @@ def load_model(model_path, args):
     checkpoint = torch.load(model_path, map_location='cpu')
     print('epoch:', checkpoint['epoch'])
     device = torch.device(args.device)
-    model, criterion = build_model(args)
+    model, _ = build_model(args)
     model.load_state_dict(checkpoint['model'])
     model.to(device)
     model.eval()
@@ -288,21 +298,43 @@ def viz_hoi_result(img, hoi_list):
         color = random_color()
         # action
         i_cls, i_name = hoi['i_cls'], hoi['i_name']
-        cv2.putText(img_result, '%s:%.2f' % (i_name, i_cls),
-                    (10, 50 * idx_box + 50), cv2.FONT_HERSHEY_COMPLEX, 1, color, 2)
+        text_action = '%s:%.2f' % (i_name, i_cls)
+        text_size_action = cv2.getTextSize(text_action, cv2.FONT_HERSHEY_COMPLEX, 0.5, 1)[0]
+        text_x_action, text_y_action = 10, 25 * idx_box + 50
+
+        cv2.rectangle(img_result, (text_x_action, text_y_action + 2),
+                      (text_x_action + text_size_action[0], text_y_action + text_size_action[1] + 8), (0, 0, 0), -1)
+        cv2.putText(img_result, text_action, (text_x_action, text_y_action + text_size_action[1] + 5),
+                    cv2.FONT_HERSHEY_COMPLEX, 0.5, color, 1)
+
         # human
         x1, y1, x2, y2 = hoi['h_box']
         h_cls, h_name = hoi['h_cls'], hoi['h_name']
         cv2.rectangle(img_result, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(img_result, '%s:%.2f' % (h_name, h_cls), (x1, y2), cv2.FONT_HERSHEY_COMPLEX, 1, color, 2)
+        text_human = '%s:%.2f' % (h_name, h_cls)
+        text_size_human = cv2.getTextSize(text_human, cv2.FONT_HERSHEY_COMPLEX, 0.5, 1)[0]
+
+        # Place text below the rectangle
+        text_y_human = y2 + text_size_human[1] + 5
+        cv2.rectangle(img_result, (x1, y2 + 2),
+                      (x1 + text_size_human[0], y2 + text_size_human[1] + 8), (0, 0, 0), -1)
+        cv2.putText(img_result, text_human, (x1, text_y_human),
+                    cv2.FONT_HERSHEY_COMPLEX, 0.5, color, 1)
+
         # object
         x1, y1, x2, y2 = hoi['o_box']
         o_cls, o_name = hoi['o_cls'], hoi['o_name']
         cv2.rectangle(img_result, (x1, y1), (x2, y2), color, 2)
-        cv2.putText(img_result, '%s:%.2f' % (o_name, o_cls), (x1, y2), cv2.FONT_HERSHEY_COMPLEX, 1, color, 2)
-    if img_result.shape[0] > 480:
-        ratio = img_result.shape[0] / 480
-        img_result = cv2.resize(img_result, (int(img_result.shape[1] / ratio), int(img_result.shape[0] / ratio)))
+        text_object = '%s:%.2f' % (o_name, o_cls)
+        text_size_object = cv2.getTextSize(text_object, cv2.FONT_HERSHEY_COMPLEX, 0.5, 1)[0]
+
+        # Place text below the rectangle
+        text_y_object = y2 + text_size_object[1] + 5
+        cv2.rectangle(img_result, (x1, y2 + 2),
+                      (x1 + text_size_object[0], y2 + text_size_object[1] + 8), (0, 0, 0), -1)
+        cv2.putText(img_result, text_object, (x1, text_y_object),
+                    cv2.FONT_HERSHEY_COMPLEX, 0.5, color, 1)
+
     return img_result
 
 
@@ -317,10 +349,9 @@ def run_on_images(args, img_path_list):
         img, img_size = read_cv2_image(img_path=img_path)
 
         # inference on one image
-        img_rescale = resize_ensure_shortest_edge(img=img, size=672, max_size=1333)
-        img_tensor = prepare_cv2_image4nn(img=img_rescale)
+        img_tensor = prepare_cv2_image4nn(img=img)
         hoi_list = predict_on_one_image(
-            args, model, device, img_tensor, img_size, hoi_th=0.6, human_th=0.6, object_th=0.6, top_k=25,
+            args, model, device, img_tensor, img_size, hoi_th=args.hoi_th, human_th=args.human_th, object_th=args.object_th, top_k=args.top_k,
         )
         img_name = 'img_%s_%06d.jpg' % (os.path.basename(img_path), idx_img)
         img_result = viz_hoi_result(img=img, hoi_list=hoi_list)
@@ -336,13 +367,15 @@ def main():
     args = parser.parse_args()
     print(args)
 
-    if args.img_sheet is None:
+    if args.image_name:
         img_path_list = [
-            './data/hico/images/test2015/HICO_test2015_00000001.jpg',
-            './data/hoia/images/test/test_000000.png',
+            args.image_name
         ]
+    elif args.image_directory:
+        img_path_list = glob.glob(os.path.join(args.image_directory, "*.png")) + glob.glob(os.path.join(args.image_directory, "*.jpg"))
     else:
-        img_path_list = [l.strip() for l in open(args.img_sheet, 'r').readlines()]
+        print("Error: please provide --image_directory or --image_name")
+        return
 
     run_on_images(args=args, img_path_list=img_path_list)
     print('done')

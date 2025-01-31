@@ -22,6 +22,7 @@ from datasets.vcoco import hoi_interaction_names as hoi_interaction_names_vcoco
 from datasets.vcoco import coco_instance_ID_to_name as coco_instance_ID_to_name_vcoco
 from models import build_model
 import util.misc as utils
+from tools.eval import eval_hico
 
 
 def get_args_parser():
@@ -33,6 +34,7 @@ def get_args_parser():
     parser.add_argument('--epochs', default=250, type=int)
     parser.add_argument('--lr_drop', default=200, type=int)
     parser.add_argument('--clip_max_norm', default=0.1, type=float, help='gradient clipping max norm')
+    parser.add_argument('--image_size', default=-1, type=int, help='specifies the input image size for augmentation')
 
     # Backbone.
     parser.add_argument('--backbone', choices=['resnet50', 'resnet101'], required=True,
@@ -160,7 +162,7 @@ def inference_on_data(args, model_path, image_set, max_to_viz=10, test_scale=-1)
     model.to(device)
     model.eval()
 
-    dataset_val = build_dataset(image_set=image_set, args=args, test_scale=test_scale)
+    dataset_val = build_dataset(image_set=image_set, args=args, test_scale=0)
     sampler_val = torch.utils.data.SequentialSampler(dataset_val)
     data_loader_val = DataLoader(dataset_val, args.batch_size, sampler=sampler_val,
                                  drop_last=False, collate_fn=utils.collate_fn, num_workers=args.num_workers)
@@ -174,8 +176,7 @@ def inference_on_data(args, model_path, image_set, max_to_viz=10, test_scale=-1)
                 % (0 if test_scale == -1 else test_scale, epoch, args.dataset_file, args.backbone)
     file_path = os.path.join(log_dir, file_name)
     if os.path.exists(file_path):
-        print('step1: file exists, inference done.')
-        return file_path
+        os.remove(file_path)
 
     p_bar = tqdm(total=max_to_viz)
 
@@ -317,10 +318,10 @@ def draw_on_image(args, image_id, hoi_list, image_path):
     img_name = image_id
     assert args.dataset_file in ['hico', 'vcoco', 'hoia'], args.dataset_file
     if args.dataset_file == 'hico':
-        if 'train2015' in img_name:
-            img_path = './data/hico/images/train2015/%s' % img_name
-        elif 'test2015' in img_name:
-            img_path = './data/hico/images/test2015/%s' % img_name
+        if 'train' in img_name:
+            img_path = './data/hico/images/train/%s' % img_name
+        elif 'test' in img_name:
+            img_path = './data/hico/images/test/%s' % img_name
         else:
             raise NotImplementedError()
     elif args.dataset_file == 'vcoco':
@@ -361,7 +362,7 @@ def draw_on_image(args, image_id, hoi_list, image_path):
     cv2.imwrite(image_path, img_result)
 
 
-def eval_once(args, model_result_path, hoi_th=0.9, human_th=0.5, object_th=0.8, max_to_viz=10, save_image=False):
+def eval_once(args, model_path, model_result_path, hoi_th=0.9, human_th=0.5, object_th=0.8, max_to_viz=10, save_image=False):
     assert args.dataset_file in ['hico', 'vcoco', 'hoia'], args.dataset_file
 
     hoi_result_list = parse_model_result(
@@ -381,15 +382,13 @@ def eval_once(args, model_result_path, hoi_th=0.9, human_th=0.5, object_th=0.8, 
                 img_path = '%s/dt_%02d.jpg' % (os.path.dirname(model_result_path), idx_img)
                 draw_on_image(args, item['image_id'], item['hoi_list'], image_path=img_path)
 
-    os.system('echo %s >> final_report.txt' % result_file)
     if args.dataset_file == 'hico':
-        os.system('python3 tools/eval/eval_hico.py --output_file=%s >> final_report.txt' % result_file)
+        os.system(f'python3 tools/eval/eval_hico.py --output_file={result_file} --epoch={args.epoch} --output_dir={os.path.dirname(model_path)} >> final_report.txt')
     elif args.dataset_file == 'vcoco':
         os.system('python3 tools/eval/eval_vcoco.py --output_file=%s >> final_report.txt' % result_file)
     else:
         os.system('python3 tools/eval/eval_hoia.py --output_file=%s >> final_report.txt' % result_file)
     os.system('echo %s >> final_report.txt' % '%f %f %f\n' % (human_th, object_th, hoi_th))
-    print(human_th, object_th, hoi_th, '--------------------above')
 
 
 def run_and_eval(args, model_path, test_scale, max_to_viz=10, save_image=False):
@@ -406,6 +405,7 @@ def run_and_eval(args, model_path, test_scale, max_to_viz=10, save_image=False):
             for hoi_th in [0.0]:
                 eval_once(
                     args=args,
+                    model_path=model_path,
                     model_result_path=model_output_file,
                     hoi_th=hoi_th,
                     human_th=human_th,
@@ -421,6 +421,8 @@ def main():
     python3 test.py --dataset_file=hico --backbone=resnet50 --batch_size=1 --log_dir=./ --model_path=your_model_path
     """
     parser = get_args_parser()
+    parser.add_argument('--epoch', type=int, default=0)
+
     args = parser.parse_args()
     print(args)
 
@@ -438,6 +440,8 @@ def main():
                 max_to_viz=args.max_to_viz if args.save_image else 200*100,
                 save_image=args.save_image,
             )
+
+    torch.cuda.empty_cache()
     print('done')
 
 

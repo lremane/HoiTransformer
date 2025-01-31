@@ -68,26 +68,39 @@ class HungarianMatcher(nn.Module):
         action_out_prob = outputs["action_pred_logits"].flatten(0, 1).softmax(-1)  # [bs * num_queries, num_classes]
 
         # Also concat the target labels and boxes
-        human_tgt_ids = torch.cat([v["human_labels"] for v in targets])
-        human_tgt_box = torch.cat([v["human_boxes"] for v in targets])
-        object_tgt_ids = torch.cat([v["object_labels"] for v in targets])
-        object_tgt_box = torch.cat([v["object_boxes"] for v in targets])
-        action_tgt_ids = torch.cat([v["action_labels"] for v in targets])
+        human_tgt_ids = torch.cat([v["human_labels"] for v in targets]).long()
+        human_tgt_box = torch.cat([v["human_boxes"] for v in targets]) if len(targets) > 0 else torch.empty(0, 4)
+        object_tgt_ids = torch.cat([v["object_labels"] for v in targets]).long()
+        object_tgt_box = torch.cat([v["object_boxes"] for v in targets]) if len(targets) > 0 else torch.empty(0, 4)
+        action_tgt_ids = torch.cat([v["action_labels"] for v in targets]).long()
 
-        # Compute the classification cost. Contrary to the loss, we don't use the NLL,
-        # but approximate it in 1 - proba[target class].
-        # The 1 is a constant that doesn't change the matching, it can be ommitted.
+        # Handle cases with no bounding boxes
+        if human_tgt_box.numel() == 0 or object_tgt_box.numel() == 0:
+            # Return empty matches if no bounding boxes are present
+            return [(torch.empty(0, dtype=torch.int64), torch.empty(0, dtype=torch.int64)) for _ in range(bs)]
+
+        # Compute the classification costs
         human_cost_class = -human_out_prob[:, human_tgt_ids]
         object_cost_class = -object_out_prob[:, object_tgt_ids]
         action_cost_class = -action_out_prob[:, action_tgt_ids]
 
         # Compute the L1 cost between boxes
-        human_cost_bbox = torch.cdist(human_out_bbox, human_tgt_box, p=1)
-        object_cost_bbox = torch.cdist(object_out_bbox, object_tgt_box, p=1)
+        human_cost_bbox = torch.cdist(human_out_bbox, human_tgt_box, p=1) if human_tgt_box.numel() > 0 else torch.zeros(
+            0)
+        object_cost_bbox = torch.cdist(object_out_bbox, object_tgt_box,
+                                       p=1) if object_tgt_box.numel() > 0 else torch.zeros(0)
 
-        # Compute the giou cost betwen boxes
-        human_cost_giou = -generalized_box_iou(box_cxcywh_to_xyxy(human_out_bbox), box_cxcywh_to_xyxy(human_tgt_box))
-        object_cost_giou = -generalized_box_iou(box_cxcywh_to_xyxy(object_out_bbox), box_cxcywh_to_xyxy(object_tgt_box))
+        # Compute the giou cost between boxes
+        human_cost_giou = (
+            -generalized_box_iou(box_cxcywh_to_xyxy(human_out_bbox), box_cxcywh_to_xyxy(human_tgt_box))
+            if human_tgt_box.numel() > 0
+            else torch.zeros(0)
+        )
+        object_cost_giou = (
+            -generalized_box_iou(box_cxcywh_to_xyxy(object_out_bbox), box_cxcywh_to_xyxy(object_tgt_box))
+            if object_tgt_box.numel() > 0
+            else torch.zeros(0)
+        )
 
         beta_1, beta_2 = 1.2, 1
         alpha_h, alpha_o, alpha_r = 1, 1, 2
