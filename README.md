@@ -11,7 +11,7 @@
 - place in root directory pretrained model resnet-model: link to modells
 - with: pip install gdown && gdown https://drive.google.com/uc?id=1-WQnnTHB7f7X2NpqPVqIO6tvWN6k1Ot8
 - download detr modells: cd data/detr_coco && wget https://dl.fbaipublicfiles.com/detr/detr-r50-e632da11.pth
-- run finetune.py: python finetune.py --epochs=250 --lr_drop=10 --dataset_file=hico --batch_size=2 --backbone=resnet50 --lr=0.00001 --lr_backbone=0.00001 --resume=res50_hico.pth
+- run finetune.py: python finetune.py --epochs=250 --lr_drop=10 --dataset_file=hico --batch_size=2 --backbone=resnet50 --lr=0.00001 --lr_backbone=0.00001 --resume=res50_hico.pth --dont_use_checkpoint_state
 
 ## testing
 python test.py --backbone=resnet50 --batch_size=1 --dataset_file=hico --log_dir=./ --model_path=checkpoint/p_202501261602//checkpoint.pth --epoch=164

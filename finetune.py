@@ -13,11 +13,11 @@ import random
 import os
 import time
 from pathlib import Path
-from time import sleep
 
 import numpy as np
 import torch
 from torch.utils.data import DataLoader, DistributedSampler
+import subprocess
 
 import util.misc as utils
 from datasets import build_dataset
@@ -186,8 +186,8 @@ def main(args):
         checkpoint = torch.load(args.resume, map_location='cpu')
         model_without_ddp.load_state_dict(checkpoint['model'])
         if args.dont_use_checkpoint_state and 'optimizer' in checkpoint and 'lr_scheduler' in checkpoint and 'epoch' in checkpoint:
-            # optimizer.load_state_dict(checkpoint['optimizer'])
-            # lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
+            optimizer.load_state_dict(checkpoint['optimizer'])
+            lr_scheduler.load_state_dict(checkpoint['lr_scheduler'])
             args.start_epoch = checkpoint['epoch'] + 1
 
     print("Start training")
@@ -223,10 +223,8 @@ def main(args):
             with (output_dir / "log.txt").open("a") as f:
                 f.write(json.dumps(log_stats) + "\n")
 
-        import subprocess
-
         torch.cuda.empty_cache()
-
+        # run inference on test dataset after each epoch
         try:
             subprocess.run(
                 [

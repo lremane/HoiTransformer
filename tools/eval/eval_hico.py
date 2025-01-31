@@ -120,7 +120,7 @@ class hico():
                 for i, pred_hoi_i in enumerate(pred_i['hoi_prediction']):
                     triplet = [pred_bbox[pred_hoi_i['subject_id']]['category_id'],
                                pred_bbox[pred_hoi_i['object_id']]['category_id'], pred_hoi_i['category_id']]
-                    # todo: das knallt hier weg, wenn etwas vorhergesagt wird, was es nicht gibt
+                    # ignore predicted triplets that don't exist
                     if triplet not in self.verb_name_dict:
                         print('error: the following prediction is a not allowed hoi: ', triplet, pred_i['file_name'])
                         continue
@@ -137,7 +137,7 @@ class hico():
         max_recall = np.zeros(self.num_class)
         name2ap = {}
 
-        class_ap_recall_log = []  # Initialize a list to store class-wise information
+        class_ap_recall_log = []
         for i in range(len(self.verb_name_dict)):
             name = self.verb_name_dict_name[i]
             sum_gt = self.sum_gt[i]
@@ -160,7 +160,6 @@ class hico():
             ap[i] = self.voc_ap(rec, prec)
             max_recall[i] = np.max(rec)
 
-            # class_info = f"class {self.verb_name_dict_name[i]} -- ap: {ap[i]} max recall: {max_recall[i]}"
             class_info = {
                 "class": self.verb_name_dict_name[i],
                 "ap": ap[i],
@@ -511,13 +510,10 @@ def get_hoi_output(Image_dets, corre_mat=None):
 
 def main():
     parser = argparse.ArgumentParser()
-    # parser.add_argument("--output_file", type=str, default='../../log/result_s672_e045_hico_resnet50.json')
-    # parser.add_argument("--eval_path", default="../../data/hico/eval")
     parser.add_argument("--output_file", type=str)
     parser.add_argument("--eval_path", default="./data/hico/eval")
     parser.add_argument('--epoch', type=int)
     parser.add_argument('--output_dir', type=str)
-    parser.add_argument('--validation_file', type=str)
 
     args = parser.parse_args()
 
@@ -533,13 +529,10 @@ def main():
     output_hoi = get_hoi_output(det, corre_mat)
 
     # 2. evaluation
-    hoi_eval = hico(os.path.join(args.eval_path, args.validation_file))
+    hoi_eval = hico(os.path.join(args.eval_path, 'test_hico.json'))
     map = hoi_eval.evalution(output_hoi, args, save_mAP=None)
 
     return map
-
-def evaluate():
-    pass
 
 if __name__ == "__main__":
     main()
