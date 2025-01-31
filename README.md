@@ -48,15 +48,15 @@ conda activate HoiTransformer
 Ensure your training and testing datasets are structured in the `data/` directory. For transfer learning using the **HICO-DET pretrained model**, follow this structure:
 ```
 HoiTransformer/
-├── data/
-│   ├── detr_coco/
-│   ├── hico/
-│   │   ├── eval/
-│   │   └── images/
-│   │       ├── train/
-│   │       └── test/
+└── data/
+    ├── detr_coco/
+    └── hico/
+        ├── eval/
+        └── images/
+            ├── train/
+            └── test/
 ```
-An example dataset structure can be found in the official [HoiTransformer Repository](https://github.com/bbepoch/HoiTransformer).
+An example dataset can be found in the official [HoiTransformer Repository](https://github.com/bbepoch/HoiTransformer).
 
 ---
 
