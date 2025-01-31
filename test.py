@@ -318,9 +318,9 @@ def draw_on_image(args, image_id, hoi_list, image_path):
     assert args.dataset_file in ['hico', 'vcoco', 'hoia'], args.dataset_file
     if args.dataset_file == 'hico':
         if 'train' in img_name:
-            img_path = './data/hico/images/train2015/%s' % img_name
+            img_path = './data/hico/images/train/%s' % img_name
         elif 'test' in img_name:
-            img_path = './data/hico/images/test2015/%s' % img_name
+            img_path = './data/hico/images/test/%s' % img_name
         else:
             raise NotImplementedError()
     elif args.dataset_file == 'vcoco':
@@ -361,7 +361,7 @@ def draw_on_image(args, image_id, hoi_list, image_path):
     cv2.imwrite(image_path, img_result)
 
 
-def eval_once(args, image_set, model_path, model_result_path, hoi_th=0.9, human_th=0.5, object_th=0.8, max_to_viz=10, save_image=False):
+def eval_once(args, model_path, model_result_path, hoi_th=0.9, human_th=0.5, object_th=0.8, max_to_viz=10, save_image=False):
     assert args.dataset_file in ['hico', 'vcoco', 'hoia'], args.dataset_file
 
     hoi_result_list = parse_model_result(
@@ -381,13 +381,8 @@ def eval_once(args, image_set, model_path, model_result_path, hoi_th=0.9, human_
                 img_path = '%s/dt_%02d.jpg' % (os.path.dirname(model_result_path), idx_img)
                 draw_on_image(args, item['image_id'], item['hoi_list'], image_path=img_path)
 
-    if image_set == 'test':
-        validation_file = "test_hico.json"
-    else:
-        validation_file = "trainval_hico.json"
     if args.dataset_file == 'hico':
-        # eval_hico.main()
-        os.system(f'python3 tools/eval/eval_hico.py --output_file={result_file} --epoch={args.epoch} --output_dir={os.path.dirname(model_path)} --validation_file={validation_file} >> final_report.txt')
+        os.system(f'python3 tools/eval/eval_hico.py --output_file={result_file} --epoch={args.epoch} --output_dir={os.path.dirname(model_path)} >> final_report.txt')
     elif args.dataset_file == 'vcoco':
         os.system('python3 tools/eval/eval_vcoco.py --output_file=%s >> final_report.txt' % result_file)
     else:
@@ -395,11 +390,10 @@ def eval_once(args, image_set, model_path, model_result_path, hoi_th=0.9, human_
     os.system('echo %s >> final_report.txt' % '%f %f %f\n' % (human_th, object_th, hoi_th))
 
 
-def run_and_eval(args, model_path, test_scale, max_to_viz=10, image_set='test', save_image=False):
+def run_and_eval(args, model_path, test_scale, max_to_viz=10, save_image=False):
     model_output_file = inference_on_data(
         args=args,
         model_path=model_path,
-        image_set=image_set,
         test_scale=test_scale,
         max_to_viz=max_to_viz,
     )
@@ -409,7 +403,6 @@ def run_and_eval(args, model_path, test_scale, max_to_viz=10, image_set='test', 
             for hoi_th in [0.0]:
                 eval_once(
                     args=args,
-                    image_set=image_set,
                     model_path=model_path,
                     model_result_path=model_output_file,
                     hoi_th=hoi_th,
@@ -438,22 +431,11 @@ def main():
         ]:
             os.system('echo %s >> final_report.txt' % model_path)
             print(model_path)
-            print("eval on test data")
             run_and_eval(
                 args=args,
                 model_path=model_path,
                 test_scale=test_scale,
                 max_to_viz=args.max_to_viz if args.save_image else 200*100,
-                save_image=args.save_image,
-            )
-
-            print("eval on training data")
-            run_and_eval(
-                args=args,
-                model_path=model_path,
-                test_scale=test_scale,
-                max_to_viz=args.max_to_viz if args.save_image else 200 * 100,
-                image_set='train',
                 save_image=args.save_image,
             )
 

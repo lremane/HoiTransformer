@@ -516,9 +516,8 @@ class Compose(object):
 
 
 def make_hico_transforms(image_set, test_scale=-1):
-    #scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800, 832, 896]
-    # scales = [576, 608, 640, 672, 704, 736, 768, 800, 832, 896, 928]
-    scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
+    image_size = 1600
+    scales = [image_size - 48 * i for i in range(10) if (image_size - 32 * i) > 400]
     normalize = Compose([
         ToTensor(),
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
@@ -527,14 +526,14 @@ def make_hico_transforms(image_set, test_scale=-1):
         return Compose([
             RandomHorizontalFlip(),
             RandomAdjustImage(),
-            # RandomSelect(
-            #     RandomResize(scales, max_size=1500),  # Adjusted max_size for higher resolution
-            #     Compose([
-            #         RandomResize([400, 500, 600]),
-            #         RandomSizeCrop(1200, 1800),
-            #         RandomResize(scales, max_size=1500),
-            #     ])
-            # ),
+            RandomSelect(
+                RandomResize(scales, max_size=2048),
+                Compose([
+                    RandomResize([1200, 1400, 1600]),
+                    RandomSizeCrop(1200, 2048),
+                    RandomResize(scales, max_size=2048),
+                ])
+            ),
             normalize,
         ])
     if image_set == 'test':
@@ -572,9 +571,9 @@ class HoiDetection(VisionDataset):
         img_name = ann['image_id']
         target = ann['annotations']
         if 'train' in img_name:
-            img_path = './data/hico/images/train2015/%s' % img_name
+            img_path = './data/hico/images/train/%s' % img_name
         elif 'test' in img_name:
-            img_path = './data/hico/images/test2015/%s' % img_name
+            img_path = './data/hico/images/test/%s' % img_name
         else:  # For single image visualization.
             raise NotImplementedError()
         img = cv2.imread(img_path, cv2.IMREAD_COLOR)

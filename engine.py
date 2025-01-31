@@ -16,10 +16,6 @@ import torch
 
 import util.misc as utils
 
-import torch
-import matplotlib.pyplot as plt
-import cv2
-import numpy as np
 
 def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
                     data_loader: Iterable, optimizer: torch.optim.Optimizer,
@@ -36,66 +32,6 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
     for samples, targets in metric_logger.log_every(data_loader, print_freq, header):
         samples = samples.to(device)
         targets = [{k: v.to(device) for k, v in t.items() if k not in ['image_id']} for t in targets]
-
-        # # Assuming 'samples.tensors' is your input image tensor
-        # image_tensor = samples.tensors  # Adjust this if the attribute name is different
-        #
-        # # Ensure the tensor is in the right format (C, H, W)
-        # if image_tensor.ndim == 4:  # If batch of images, pick one image
-        #     print("Original Tensor Shape:", image_tensor.shape)
-        #     image_tensor = image_tensor[0]  # Get the first image from the batch
-        #
-        # # Convert tensor to a NumPy array in HWC format (required by OpenCV)
-        # image_array = image_tensor.permute(1, 2, 0).cpu().numpy()  # Convert CxHxW -> HxWxC
-        # image_array = (image_array * 255).astype(np.uint8)  # Assuming input is in [0, 1] range
-        #
-        # # Convert RGB (matplotlib format) to BGR (OpenCV format)
-        # image_array_bgr = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
-        #
-        # # Loop through each target
-        # for target in targets:
-        #     # Draw all human_boxes
-        #     if 'human_boxes' in target:
-        #         for box in target['human_boxes']:
-        #             x_min, y_min, x_max, y_max = box.cpu().numpy()
-        #             cv2.rectangle(image_array_bgr,
-        #                           (int(x_min), int(y_min)),
-        #                           (int(x_max), int(y_max)),
-        #                           (0, 255, 0), 2)  # Green for human_boxes
-        #
-        #     # Draw all object_boxes
-        #     if 'object_boxes' in target:
-        #         for box in target['object_boxes']:
-        #             x_min, y_min, x_max, y_max = box.cpu().numpy()
-        #             cv2.rectangle(image_array_bgr,
-        #                           (int(x_min), int(y_min)),
-        #                           (int(x_max), int(y_max)),
-        #                           (255, 0, 0), 2)  # Blue for object_boxes
-        #
-        #     # Draw all action_boxes
-        #     # if 'action_boxes' in target:
-        #     #     for box in target['action_boxes']:
-        #     #         x_min, y_min, x_max, y_max = box.cpu().numpy()
-        #     #         cv2.rectangle(image_array_bgr,
-        #     #                       (int(x_min), int(y_min)),
-        #     #                       (int(x_max), int(y_max)),
-        #     #                       (0, 0, 255), 2)  # Red for action_boxes
-        #
-        # # Convert back to RGB for visualization with Matplotlib
-        # image_with_rectangles_rgb = cv2.cvtColor(image_array_bgr, cv2.COLOR_BGR2RGB)
-        #
-        # # Display the image with the rectangles
-        # # Get the original image dimensions
-        # height, width, _ = image_with_rectangles_rgb.shape
-        #
-        # # Set the figure size based on the image size
-        # plt.figure(figsize=(width / 100, height / 100), dpi=100)  # Scale dimensions to inches (width, height)
-        #
-        # # Display the image with the rectangles
-        # plt.imshow(image_with_rectangles_rgb)
-        # plt.axis('off')  # Turn off axes
-        # plt.tight_layout(pad=0)  # Remove any extra padding
-        # plt.show()
 
         outputs = model(samples)
         loss_dict = criterion(outputs, targets)

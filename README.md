@@ -88,8 +88,8 @@ cd data && bash download_annotations.sh
         │   ├── hico/
         │   │   ├── eval/
         │   │   └── images/
-        │   │       ├── train2015/
-        │   │       └── test2015/
+        │   │       ├── train/
+        │   │       └── test/
         │   ├── hoia/
         │   │   ├── eval/
         │   │   └── images/

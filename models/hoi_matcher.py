@@ -47,7 +47,8 @@ class HungarianMatcher(nn.Module):
                  "pred_boxes": Tensor of dim [batch_size, num_queries, 4] with the predicted box coordinates
 
             targets: This is a list of targets (len(targets) = batch_size), where each target is a dict containing:
-                 "labels": Tensor of dim [num_target_boxes] containing the class labels
+                 "labels": Tensor of dim [num_target_boxes] (where num_target_boxes is the number of ground-truth
+                           objects in the target) containing the class labels
                  "boxes": Tensor of dim [num_target_boxes, 4] containing the target box coordinates
 
         Returns:
@@ -59,14 +60,14 @@ class HungarianMatcher(nn.Module):
         """
         bs, num_queries = outputs["action_pred_logits"].shape[:2]  # 2, 100
 
-        # Flatten the outputs
+        # We flatten to compute the cost matrices in a batch
         human_out_prob = outputs["human_pred_logits"].flatten(0, 1).softmax(-1)  # [bs * num_queries, num_classes]
         human_out_bbox = outputs["human_pred_boxes"].flatten(0, 1)  # [bs * num_queries, 4]
         object_out_prob = outputs["object_pred_logits"].flatten(0, 1).softmax(-1)  # [bs * num_queries, num_classes]
         object_out_bbox = outputs["object_pred_boxes"].flatten(0, 1)  # [bs * num_queries, 4]
         action_out_prob = outputs["action_pred_logits"].flatten(0, 1).softmax(-1)  # [bs * num_queries, num_classes]
 
-        # Concat the target labels and boxes
+        # Also concat the target labels and boxes
         human_tgt_ids = torch.cat([v["human_labels"] for v in targets]).long()
         human_tgt_box = torch.cat([v["human_boxes"] for v in targets]) if len(targets) > 0 else torch.empty(0, 4)
         object_tgt_ids = torch.cat([v["object_labels"] for v in targets]).long()
